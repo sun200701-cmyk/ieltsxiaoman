@@ -57,6 +57,17 @@ export async function POST(request: Request) {
     const user = await getAuthenticatedUser(supabase);
     const usage = await ensureAccountUsage(supabase, user);
 
+    if (!usage.hasActiveMembership) {
+      return NextResponse.json(
+        {
+          code: "membership_required",
+          error: "Free 用户当前仅可体验全真模考答题流程，正式生成 Mock Report 需先开通 Pro 或 Ultra。",
+          usage,
+        },
+        { status: 403 },
+      );
+    }
+
     const answeredCount = metadata.length;
 
     if (!usage.hasAvailableAnalysis || getAvailableAnalysisCredits(usage) < answeredCount) {

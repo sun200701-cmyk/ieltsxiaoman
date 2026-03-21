@@ -18,13 +18,19 @@ export function MembershipPanel() {
   const { usage } = useAuth();
   const activePackPreview = usage?.addonPacks.find((pack) => pack.isActive) ?? null;
 
+  const currentPlanLabel = usage?.hasActiveMembership
+    ? usage.membershipPlan === "ultra"
+      ? "Ultra 会员有效中"
+      : "Pro 会员有效中"
+    : "当前未开通会员";
+
   return (
     <section className="grid gap-4">
       <div className="flex items-center justify-between border-b border-black/8 pb-5">
         <div>
           <h2 className="text-2xl font-semibold tracking-[-0.03em] text-[#101828]">会员</h2>
           <p className="mt-2 text-sm text-[#475467]">
-            免费用户有 5 次试用额度。Pro 为 39 元 / 30 天 / 500 次，Ultra 为 79 元 / 30 天 / 1500 次，用完后可联系客服购买加量包。
+            Free 用户可体验 5 次题库模考分析。Pro、Ultra 和加量包均为 30 天有效，适合不同强度的备考节奏。
           </p>
         </div>
         <Link href="/me/pricing" className="ghost-button">
@@ -36,18 +42,23 @@ export function MembershipPanel() {
         <div className="grid gap-4 rounded-[28px] border border-black/8 bg-white p-6">
           <div className="inline-flex w-fit items-center gap-2 rounded-full bg-[#efe6d7] px-3 py-2 text-sm font-medium text-[#8d7557]">
             <Crown className="h-4 w-4" />
-            {usage?.hasActiveMembership
-              ? usage.membershipPlan === "ultra"
-                ? "Ultra 会员有效中"
-                : "Pro 会员有效中"
-              : "当前未开通会员"}
+            {currentPlanLabel}
           </div>
 
           <div className="grid gap-3 text-sm leading-7 text-[#344054]">
-            <p>免费用户：5 次真实 AI 评分 + 语音转文字。</p>
-            <p>Pro：39 元 / 30 天 / 500 次。</p>
-            <p>Ultra：79 元 / 30 天 / 1500 次。</p>
-            <p>加量包：39 元 / 30 天 / 500 次，仅 Pro / Ultra 用户可购买。</p>
+            <p>Free：5 次题库模考分析机会，不支持生成全真模考报告。</p>
+            <p>
+              Pro：<span className="line-through text-[#98a2b3]">原价 299</span>
+              <span className="ml-2 font-semibold text-[#101828]">限时优惠 99</span> / 30 天 / 300 次
+            </p>
+            <p>
+              Ultra：<span className="line-through text-[#98a2b3]">原价 899</span>
+              <span className="ml-2 font-semibold text-[#101828]">限时优惠 199</span> / 30 天 / 1000 次
+            </p>
+            <p>
+              加量包：<span className="line-through text-[#98a2b3]">原价 279</span>
+              <span className="ml-2 font-semibold text-[#101828]">限时优惠 79</span> / 30 天 / 200 次
+            </p>
           </div>
 
           <div className="grid gap-3 rounded-[20px] bg-[#f7f9fc] p-5 text-sm text-[#475467]">
@@ -66,7 +77,7 @@ export function MembershipPanel() {
             <p>
               当前状态：
               <span className="ml-2 font-semibold text-[#101828]">
-                {usage?.hasActiveMembership ? (usage.membershipPlan === "ultra" ? "Ultra" : "Pro") : "免费用户"}
+                {usage?.hasActiveMembership ? (usage.membershipPlan === "ultra" ? "Ultra" : "Pro") : "Free"}
               </span>
             </p>
             {usage?.membershipExpiresAt ? (
@@ -77,7 +88,7 @@ export function MembershipPanel() {
             ) : null}
             {activePackPreview ? (
               <p>
-                最早可用加量包到期：
+                最近一个可用加量包到期：
                 <span className="ml-2 font-semibold text-[#101828]">{formatDate(activePackPreview.expiresAt)}</span>
               </p>
             ) : null}
