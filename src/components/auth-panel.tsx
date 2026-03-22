@@ -2,30 +2,37 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { LogOut, Mail, ShieldCheck } from "lucide-react";
+import { KeyRound, LogOut, Mail, ShieldCheck } from "lucide-react";
 
 import { useAuth } from "@/components/auth-provider";
+
+type AuthMode = "login" | "register";
 
 export function AuthPanel() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { configured, loading, supabase, user, usage } = useAuth();
+  const { configured, loading, refreshUsage, supabase, user, usage } = useAuth();
 
   const returnTo = searchParams.get("returnTo");
-  const [email, setEmail] = useState("");
-  const [otpCode, setOtpCode] = useState("");
+  const [mode, setMode] = useState<AuthMode>("login");
+  const [registerEmail, setRegisterEmail] = useState("");
+  const [registerOtp, setRegisterOtp] = useState("");
   const [otpSent, setOtpSent] = useState(false);
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [status, setStatus] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    if (user && returnTo) {
+    if (user && !usage?.requiresProfileSetup && returnTo) {
       router.replace(returnTo);
     }
-  }, [returnTo, router, user]);
+  }, [returnTo, router, usage?.requiresProfileSetup, user]);
 
   const handleSendOtp = async () => {
-    if (!supabase || !email.trim()) {
+    if (!supabase || !registerEmail.trim()) {
       return;
     }
 
@@ -33,7 +40,7 @@ export function AuthPanel() {
     setStatus(null);
 
     const { error } = await supabase.auth.signInWithOtp({
-      email: email.trim(),
+      email: registerEmail.trim(),
     });
 
     setSubmitting(false);
@@ -44,11 +51,11 @@ export function AuthPanel() {
     }
 
     setOtpSent(true);
-    setStatus("验证码已发送到邮箱，请输入邮件中的 6 位验证码完成登录。");
+    setStatus("验证码已发送到邮箱，请输入邮件中的 8 位验证码完成验证。");
   };
 
   const handleVerifyOtp = async () => {
-    if (!supabase || !email.trim() || !otpCode.trim()) {
+    if (!supabase || !registerEmail.trim() || !registerOtp.trim()) {
       return;
     }
 
@@ -56,8 +63,8 @@ export function AuthPanel() {
     setStatus(null);
 
     const { error } = await supabase.auth.verifyOtp({
-      email: email.trim(),
-      token: otpCode.trim(),
+      email: registerEmail.trim(),
+      token: registerOtp.trim(),
       type: "email",
     });
 
@@ -68,7 +75,69 @@ export function AuthPanel() {
       return;
     }
 
-    setStatus("登录成功。");
+    setStatus("邮箱验证成功，请继续设置登录密码。");
+  };
+
+  const handlePasswordLogin = async () => {
+    if (!supabase || !loginEmail.trim() || !loginPassword) {
+      return;
+    }
+
+    setSubmitting(true);
+    setStatus(null);
+
+    const { error } = await supabase.auth.signInWithPassword({
+      email: loginEmail.trim(),
+      password: loginPassword,
+    });
+
+    setSubmitting(false);
+    setStatus(error ? error.message : "登录成功。");
+  };
+
+  const handleFinishSetup = async () => {
+    if (!supabase || !user) {
+      return;
+    }
+
+    if (!password || password.length < 6) {
+      setStatus("密码至少需要 6 位。");
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setStatus("两次输入的密码不一致。");
+      return;
+    }
+
+    setSubmitting(true);
+    setStatus(null);
+
+    const { error: passwordError } = await supabase.auth.updateUser({ password });
+    if (passwordError) {
+      setSubmitting(false);
+      setStatus(passwordError.message);
+      return;
+    }
+
+    const { error: profileError } = await supabase
+      .from("profiles")
+      .update({
+        password_set: true,
+      })
+      .eq("id", user.id);
+
+    setSubmitting(false);
+
+    if (profileError) {
+      setStatus(profileError.message);
+      return;
+    }
+
+    await refreshUsage();
+    setPassword("");
+    setConfirmPassword("");
+    setStatus("注册完成，后续可以直接使用邮箱和密码登录。");
   };
 
   const handleSignOut = async () => {
@@ -77,7 +146,7 @@ export function AuthPanel() {
     }
 
     await supabase.auth.signOut();
-    setOtpCode("");
+    setRegisterOtp("");
     setOtpSent(false);
     setStatus(null);
   };
@@ -103,11 +172,42 @@ export function AuthPanel() {
         <div className="rounded-[28px] border border-black/8 bg-white p-6">
           <p className="text-sm text-[#667085]">当前登录账号</p>
           <p className="mt-2 text-lg font-medium text-[#101828]">{user.email}</p>
-          <p className="mt-2 text-sm leading-6 text-[#475467]">
-            现在已切换为邮箱验证码登录，不再要求先设置密码。
-          </p>
-          {usage?.phone ? <p className="mt-2 text-sm text-[#667085]">已保存手机号：{usage.phone}</p> : null}
         </div>
+
+        {usage?.requiresProfileSetup ? (
+          <div className="grid gap-4 rounded-[28px] border border-[#8d7557]/18 bg-[#f8f3ea] p-6">
+            <div>
+              <h3 className="text-xl font-semibold text-[#101828]">设置登录密码</h3>
+              <p className="mt-2 text-sm leading-7 text-[#475467]">
+                邮箱已经验证成功，请先设置密码。设置完成后，后续就可以直接使用邮箱和密码登录。
+              </p>
+            </div>
+
+            <input
+              className="field"
+              type="password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              placeholder="请设置密码（至少 6 位）"
+            />
+            <input
+              className="field"
+              type="password"
+              value={confirmPassword}
+              onChange={(event) => setConfirmPassword(event.target.value)}
+              placeholder="请再次输入密码"
+            />
+            <button
+              type="button"
+              className="brand-button w-full justify-center"
+              onClick={handleFinishSetup}
+              disabled={submitting}
+            >
+              <KeyRound className="h-4 w-4" />
+              {submitting ? "保存中..." : "完成注册"}
+            </button>
+          </div>
+        ) : null}
 
         {status ? <p className="text-sm text-[#344054]">{status}</p> : null}
 
@@ -125,57 +225,145 @@ export function AuthPanel() {
         <p className="text-4xl font-semibold tracking-[-0.06em] text-[#101828] sm:text-5xl">雅小满</p>
         <p className="mt-4 text-lg text-[#475467] sm:text-xl">你的雅思学习 AI 助手</p>
 
+        <div className="mt-10 flex justify-center gap-4">
+          <button
+            type="button"
+            onClick={() => {
+              setMode("register");
+              setStatus(null);
+            }}
+            className={`rounded-full px-8 py-3 text-base font-medium transition ${
+              mode === "register"
+                ? "bg-[#101828] text-white"
+                : "border border-black/8 bg-[#fffdf8] text-[#101828] hover:bg-[#f3eee5]"
+            }`}
+          >
+            注册
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setMode("login");
+              setStatus(null);
+            }}
+            className={`rounded-full px-8 py-3 text-base font-medium transition ${
+              mode === "login"
+                ? "bg-[#101828] text-white"
+                : "border border-black/8 bg-[#fffdf8] text-[#101828] hover:bg-[#f3eee5]"
+            }`}
+          >
+            登录
+          </button>
+        </div>
+
         <div className="mx-auto mt-10 max-w-xl rounded-[28px] border border-black/8 bg-[#fbfbfc] p-8 text-left">
-          <div className="grid gap-4">
-            <div>
-              <p className="text-lg font-semibold text-[#101828]">邮箱验证码登录</p>
-              <p className="mt-2 text-sm leading-7 text-[#475467]">
-                输入邮箱后发送验证码。已注册用户会直接登录，首次使用的邮箱会自动完成注册。
-              </p>
+          {mode === "register" ? (
+            <div className="grid gap-4">
+              <div>
+                <p className="text-lg font-semibold text-[#101828]">邮箱验证码注册</p>
+                <p className="mt-2 text-sm leading-7 text-[#475467]">
+                  先通过邮箱验证码完成验证，再设置密码。验证码邮件里是 8 位验证码，不是登录链接。
+                </p>
+              </div>
+
+              <input
+                className="field"
+                type="email"
+                value={registerEmail}
+                onChange={(event) => setRegisterEmail(event.target.value)}
+                placeholder="请输入邮箱"
+              />
+
+              <button
+                type="button"
+                className="brand-button w-full justify-center"
+                onClick={handleSendOtp}
+                disabled={submitting || !registerEmail.trim()}
+              >
+                <Mail className="h-4 w-4" />
+                {submitting ? "发送中..." : otpSent ? "重新发送验证码" : "发送验证码"}
+              </button>
+
+              {otpSent ? (
+                <>
+                  <input
+                    className="field"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    value={registerOtp}
+                    onChange={(event) => setRegisterOtp(event.target.value.replace(/\s+/g, ""))}
+                    placeholder="请输入 8 位验证码"
+                  />
+                  <button
+                    type="button"
+                    className="brand-button w-full justify-center"
+                    onClick={handleVerifyOtp}
+                    disabled={submitting || !registerEmail.trim() || !registerOtp.trim()}
+                  >
+                    <ShieldCheck className="h-4 w-4" />
+                    {submitting ? "验证中..." : "验证邮箱"}
+                  </button>
+                </>
+              ) : null}
+
+              <button
+                type="button"
+                className="text-sm text-[#8d7557]"
+                onClick={() => {
+                  setMode("login");
+                  setStatus(null);
+                }}
+              >
+                已经有账号了，去登录
+              </button>
             </div>
+          ) : (
+            <div className="grid gap-4">
+              <div>
+                <p className="text-lg font-semibold text-[#101828]">邮箱密码登录</p>
+                <p className="mt-2 text-sm leading-7 text-[#475467]">
+                  已完成注册并设置密码后，后续直接使用邮箱和密码登录，不需要重复发送验证码。
+                </p>
+              </div>
 
-            <input
-              className="field"
-              type="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              placeholder="请输入邮箱"
-            />
+              <input
+                className="field"
+                type="email"
+                value={loginEmail}
+                onChange={(event) => setLoginEmail(event.target.value)}
+                placeholder="请输入邮箱"
+              />
+              <input
+                className="field"
+                type="password"
+                value={loginPassword}
+                onChange={(event) => setLoginPassword(event.target.value)}
+                placeholder="请输入密码"
+              />
+              <button
+                type="button"
+                className="brand-button w-full justify-center"
+                onClick={handlePasswordLogin}
+                disabled={submitting || !loginEmail.trim() || !loginPassword}
+              >
+                <KeyRound className="h-4 w-4" />
+                {submitting ? "登录中..." : "登录"}
+              </button>
 
-            <button
-              type="button"
-              className="brand-button w-full justify-center"
-              onClick={handleSendOtp}
-              disabled={submitting || !email.trim()}
-            >
-              <Mail className="h-4 w-4" />
-              {submitting ? "发送中..." : otpSent ? "重新发送验证码" : "发送验证码"}
-            </button>
+              <button
+                type="button"
+                className="text-left text-sm text-[#8d7557]"
+                onClick={() => {
+                  setMode("register");
+                  setStatus("如果你还没有注册，请先使用邮箱验证码完成注册。");
+                }}
+              >
+                还没有账号？先去注册
+              </button>
+            </div>
+          )}
 
-            {otpSent ? (
-              <>
-                <input
-                  className="field"
-                  inputMode="numeric"
-                  autoComplete="one-time-code"
-                  value={otpCode}
-                  onChange={(event) => setOtpCode(event.target.value.replace(/\s+/g, ""))}
-                  placeholder="请输入 6 位验证码"
-                />
-                <button
-                  type="button"
-                  className="brand-button w-full justify-center"
-                  onClick={handleVerifyOtp}
-                  disabled={submitting || !email.trim() || !otpCode.trim()}
-                >
-                  <ShieldCheck className="h-4 w-4" />
-                  {submitting ? "验证中..." : "验证并登录"}
-                </button>
-              </>
-            ) : null}
-
-            {status ? <p className="text-sm text-[#344054]">{status}</p> : null}
-          </div>
+          {status ? <p className="mt-4 text-sm text-[#344054]">{status}</p> : null}
         </div>
       </div>
     </section>
