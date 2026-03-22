@@ -217,12 +217,12 @@ function buildFallbackDetail(transcript: string) {
   const wordCount = cleaned ? cleaned.split(/\s+/).length : 0;
   const polishedVersion =
     cleaned.length > 0
-      ? `A more polished version of this answer could be: ${cleaned
+      ? cleaned
           .replace(/\bi think\b/gi, "I would say")
           .replace(/\breally\b/gi, "particularly")
           .replace(/\bvery\b/gi, "quite")
           .replace(/\bgood\b/gi, "beneficial")
-          .replace(/\bbad\b/gi, "less effective")}`
+          .replace(/\bbad\b/gi, "less effective")
       : "A polished version is not available yet because the transcript is empty.";
 
   return {
@@ -245,11 +245,7 @@ function buildFallbackDetail(transcript: string) {
       : ["由于缺少转写，暂时无法给出更细的逐题问题定位。"],
     conclusion: "先把回答扩展到“观点 + 原因 + 例子”的完整结构，再做表达升级，效果会更明显。",
     masteredPhrases: cleaned ? [] : ["for example", "in my opinion"],
-    upgrades: {
-      band6: "",
-      band7: "",
-      band8: polishedVersion,
-    },
+    polishedVersion,
   };
 }
 
@@ -303,11 +299,7 @@ export function MockReportPromptPage({ sessionId, partSlug, promptId }: Props) {
         ...detail,
         score: detail.score > 0 ? detail.score : buildFallbackDetail(transcript.transcript).score,
         masteredPhrases: detail.masteredPhrases?.length ? detail.masteredPhrases : buildFallbackDetail(transcript.transcript).masteredPhrases,
-        upgrades: {
-          band6: detail.upgrades?.band6 || "",
-          band7: detail.upgrades?.band7 || "",
-          band8: detail.upgrades?.band8 || buildFallbackDetail(transcript.transcript).upgrades.band8,
-        },
+        polishedVersion: detail.polishedVersion || buildFallbackDetail(transcript.transcript).polishedVersion,
         summary: detail.summary || buildFallbackDetail(transcript.transcript).summary,
         strengths: detail.strengths?.length ? detail.strengths : buildFallbackDetail(transcript.transcript).strengths,
         weaknesses: detail.weaknesses?.length ? detail.weaknesses : buildFallbackDetail(transcript.transcript).weaknesses,
@@ -395,18 +387,20 @@ export function MockReportPromptPage({ sessionId, partSlug, promptId }: Props) {
 
         <div className="grid gap-6">
           <div className="rounded-[32px] border border-black/8 bg-white p-7 shadow-[0_18px_50px_rgba(16,24,40,0.06)]">
+            <p className="text-xs uppercase tracking-[0.24em] text-[#8d7557]">Band 8 Polished Version</p>
+            <p className="mt-4 text-sm leading-7 text-[#667085]">
+              This version keeps your original meaning, but upgrades the wording, sentence flow, and overall delivery to a stronger Band 8 level.
+            </p>
+            <div className="mt-5 rounded-2xl bg-[#eef4ff] p-5">
+              <p className="mt-0 text-sm leading-7 text-[#344054]">{resolvedDetail.polishedVersion || "Polished version is not available yet."}</p>
+            </div>
+          </div>
+
+          <div className="rounded-[32px] border border-black/8 bg-white p-7 shadow-[0_18px_50px_rgba(16,24,40,0.06)]">
             <p className="text-xs uppercase tracking-[0.24em] text-[#8d7557]">标准答案</p>
             <p className="mt-4 text-base leading-8 text-[#101828]">
               {referenceAnswer || "这道题当前还没有可直接展示的标准答案，后续可以继续补充。"}
             </p>
-          </div>
-
-          <div className="rounded-[32px] border border-black/8 bg-white p-7 shadow-[0_18px_50px_rgba(16,24,40,0.06)]">
-            <p className="text-xs uppercase tracking-[0.24em] text-[#8d7557]">Polished Version</p>
-            <div className="mt-5 rounded-2xl bg-[#eef4ff] p-5">
-              <p className="text-sm font-semibold text-[#101828]">AI polished version</p>
-              <p className="mt-3 text-sm leading-7 text-[#344054]">{resolvedDetail.upgrades.band8 || referenceAnswer || "Polished version is not available yet."}</p>
-            </div>
           </div>
         </div>
       </section>

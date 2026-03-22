@@ -27,7 +27,7 @@ type AiAssessmentPayload = Pick<
   | "dailyFifteenPlan"
   | "scoreKillers"
   | "sevenDaySprintPlan"
-  | "expressionUpgrades"
+  | "polishedVersion"
 >;
 
 type ChatCompletionResponse = {
@@ -87,7 +87,7 @@ Scoring rules:
 - Evaluate fluency/coherence, lexical resource, grammar, and pronunciation.
 - Since only transcript text is available, estimate pronunciation conservatively.
 - All explanatory feedback must be in Simplified Chinese.
-- masteredPhrases and expressionUpgrades must stay in English.
+- masteredPhrases and polishedVersion must stay in English.
 
 Question metadata:
 - Part: ${question.part}
@@ -117,14 +117,7 @@ Return JSON with exactly this shape:
   "dailyFifteenPlan": string[],
   "scoreKillers": string[],
   "sevenDaySprintPlan": string[],
-  "expressionUpgrades": [
-    {
-      "original": string,
-      "band6": string,
-      "band7": string,
-      "band8": string
-    }
-  ]
+  "polishedVersion": string
 }
 
 Additional requirements:
@@ -137,7 +130,7 @@ Additional requirements:
 - dailyFifteenPlan: exactly 3 Chinese steps for a 15-minute daily routine
 - scoreKillers: exactly 3 Chinese items
 - sevenDaySprintPlan: exactly 7 Chinese items, one for each day
-- expressionUpgrades: 2 or 3 entries, choose simple expressions from the candidate if possible; if the transcript is too advanced, choose common plain expressions related to the answer
+- polishedVersion: rewrite the candidate's answer into a Band 8 polished answer; keep the original meaning and key information, allow moderate completion, and do not invent a different story
 - Return JSON only, no markdown fences, no extra explanation
   `.trim();
 }
@@ -180,23 +173,6 @@ function sanitizeStringArray(value: unknown, max = 10) {
   return value.filter((item): item is string => typeof item === "string" && item.trim().length > 0).slice(0, max);
 }
 
-function sanitizeExpressionUpgrades(value: unknown) {
-  if (!Array.isArray(value)) {
-    return [];
-  }
-
-  return value
-    .filter((item): item is Record<string, unknown> => typeof item === "object" && item !== null)
-    .map((item) => ({
-      original: typeof item.original === "string" ? item.original.trim() : "",
-      band6: typeof item.band6 === "string" ? item.band6.trim() : "",
-      band7: typeof item.band7 === "string" ? item.band7.trim() : "",
-      band8: typeof item.band8 === "string" ? item.band8.trim() : "",
-    }))
-    .filter((item) => item.original && item.band6 && item.band7 && item.band8)
-    .slice(0, 3);
-}
-
 function sanitizeAiAssessment(payload: unknown): AiAssessmentPayload {
   const data = payload as Partial<AiAssessmentPayload>;
 
@@ -225,7 +201,10 @@ function sanitizeAiAssessment(payload: unknown): AiAssessmentPayload {
     dailyFifteenPlan: sanitizeStringArray(data.dailyFifteenPlan, 3),
     scoreKillers: sanitizeStringArray(data.scoreKillers, 3),
     sevenDaySprintPlan: sanitizeStringArray(data.sevenDaySprintPlan, 7),
-    expressionUpgrades: sanitizeExpressionUpgrades(data.expressionUpgrades),
+    polishedVersion:
+      typeof data.polishedVersion === "string" && data.polishedVersion.trim()
+        ? data.polishedVersion.trim()
+        : "",
   };
 }
 

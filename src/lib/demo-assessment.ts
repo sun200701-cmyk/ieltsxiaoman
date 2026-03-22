@@ -26,6 +26,20 @@ function buildFallbackTranscript(question: DemoQuestion) {
   ].join(" ");
 }
 
+function buildPolishedVersion(transcript: string) {
+  const cleaned = transcript.replace(/\s+/g, " ").trim();
+  if (!cleaned) {
+    return "";
+  }
+
+  return cleaned
+    .replace(/\bI think\b/gi, "I would say")
+    .replace(/\breally\b/gi, "genuinely")
+    .replace(/\bvery\b/gi, "fairly")
+    .replace(/\bgood\b/gi, "beneficial")
+    .replace(/\bbad\b/gi, "less effective");
+}
+
 export async function transcribeWithTencentOrFallback(audio: File, question: DemoQuestion) {
   try {
     const transcript = await transcribeWithTencentAsr(audio);
@@ -108,20 +122,7 @@ export function generateDemoAssessment({
       "Day 6：重点检查语法稳定性和句子连接。",
       "Day 7：完整模拟一轮，录音并复盘本周最常见的问题。",
     ],
-    expressionUpgrades: [
-      {
-        original: "very good for people",
-        band6: "quite beneficial for ordinary people",
-        band7: "genuinely beneficial for the general public",
-        band8: "highly advantageous for a wide range of people",
-      },
-      {
-        original: "I think it is important",
-        band6: "I think it plays an important role",
-        band7: "I would say it plays a fairly significant role",
-        band8: "I would argue that it plays a crucial role in daily life",
-      },
-    ],
+    polishedVersion: buildPolishedVersion(transcript),
     provider,
     transcriptProvider,
     completedAt: new Date().toISOString(),

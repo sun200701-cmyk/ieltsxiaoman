@@ -68,12 +68,7 @@ export type AssessmentResult = {
   dailyFifteenPlan: string[];
   scoreKillers: string[];
   sevenDaySprintPlan: string[];
-  expressionUpgrades: Array<{
-    original: string;
-    band6: string;
-    band7: string;
-    band8: string;
-  }>;
+  polishedVersion: string;
   provider: "tencent-cloud" | "demo-fallback" | "ai-scored";
   transcriptProvider?: "tencent-cloud" | "demo-fallback";
   completedAt: string;
@@ -137,11 +132,7 @@ export type MockPromptBreakdown = {
   weaknesses: string[];
   conclusion: string;
   masteredPhrases: string[];
-  upgrades: {
-    band6: string;
-    band7: string;
-    band8: string;
-  };
+  polishedVersion: string;
 };
 
 export type MockPromptTranscript = {

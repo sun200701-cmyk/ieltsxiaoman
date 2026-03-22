@@ -110,11 +110,12 @@ function sanitizePromptBreakdowns(value: unknown): MockPromptBreakdown[] {
         weaknesses: sanitizeStringArray(item.weaknesses, 3),
         conclusion: typeof item.conclusion === "string" ? item.conclusion.trim() : "",
         masteredPhrases: sanitizeStringArray(item.masteredPhrases, 4),
-        upgrades: {
-          band6: typeof upgrades.band6 === "string" ? upgrades.band6.trim() : "",
-          band7: typeof upgrades.band7 === "string" ? upgrades.band7.trim() : "",
-          band8: typeof upgrades.band8 === "string" ? upgrades.band8.trim() : "",
-        },
+        polishedVersion:
+          typeof item.polishedVersion === "string"
+            ? item.polishedVersion.trim()
+            : typeof upgrades.band8 === "string"
+              ? upgrades.band8.trim()
+              : "",
       };
     })
     .filter((item) => item.id && item.prompt);
@@ -186,11 +187,7 @@ Return JSON with exactly this shape:
       "weaknesses": string[],
       "conclusion": string,
       "masteredPhrases": string[],
-      "upgrades": {
-        "band6": string,
-        "band7": string,
-        "band8": string
-      }
+      "polishedVersion": string
     }
   ],
   "improvementPlan": string[]
@@ -202,7 +199,7 @@ Requirements:
 - partBreakdowns must contain exactly Part 1, Part 2, and Part 3.
 - promptBreakdowns must contain one entry for every prompt above.
 - Each partBreakdown and promptBreakdown must include a score using 0.5 band steps.
-- Each promptBreakdown should include 2-4 mastered phrases and three complete English sample answers at Band 6, Band 7, and Band 8.
+- Each promptBreakdown should include 2-4 mastered phrases and one complete English Band 8 polished version based on the candidate's original answer. Keep the original meaning and key information, allow moderate completion, and do not invent a different story.
 - improvementPlan must contain 5 actionable Chinese steps.
 - confidenceNote should clearly say this is based on a full mock test and for practice reference.
   `.trim();
@@ -283,14 +280,15 @@ export function buildFallbackMockAssessment({
     weaknesses: ["细节支撑还不够。", "高分表达和复杂句比例不足。"],
     conclusion: "先把这道题练到“观点 + 原因 + 例子”的完整结构，会更接近高分回答。",
     masteredPhrases: ["in my opinion", "for example", "in real life", "as a result"],
-    upgrades: {
-      band6:
-        "I would give a direct answer first and then add one simple reason. This level is clear enough, but it still sounds a bit basic.",
-      band7:
-        "I would answer the question clearly, explain why I feel that way, and add a short personal example. That would make the response more natural and better organized.",
-      band8:
-        "I would give a precise opinion, develop it with a relevant example, and use more flexible language to connect my ideas. That kind of response would sound more natural, better supported, and closer to a Band 8 performance.",
-    },
+    polishedVersion:
+      item.transcript.trim().length > 0
+        ? item.transcript
+            .replace(/\bI think\b/gi, "I would say")
+            .replace(/\breally\b/gi, "genuinely")
+            .replace(/\bvery\b/gi, "fairly")
+            .replace(/\bgood\b/gi, "beneficial")
+            .replace(/\bbad\b/gi, "less effective")
+        : "",
   }));
 
   return {

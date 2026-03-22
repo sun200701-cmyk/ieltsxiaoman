@@ -26,6 +26,20 @@ const scoreLabelMap = {
   pronunciation: { en: "Pronunciation", zh: "发音" },
 };
 
+function buildPolishedVersion(transcript: string) {
+  const cleaned = transcript.replace(/\s+/g, " ").trim();
+  if (!cleaned) {
+    return "";
+  }
+
+  return cleaned
+    .replace(/\bI think\b/gi, "I would say")
+    .replace(/\breally\b/gi, "genuinely")
+    .replace(/\bvery\b/gi, "fairly")
+    .replace(/\bgood\b/gi, "beneficial")
+    .replace(/\bbad\b/gi, "less effective");
+}
+
 function escapeRegExp(text: string) {
   return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
@@ -231,6 +245,7 @@ export function PracticeStudio({ question }: PracticeStudioProps) {
   const recorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<BlobPart[]>([]);
+  const recordingTimerRef = useRef<ReturnType<typeof window.setInterval> | null>(null);
 
   const [recorderState, setRecorderState] = useState<RecorderState>("idle");
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
@@ -298,6 +313,14 @@ export function PracticeStudio({ question }: PracticeStudioProps) {
     );
   }, [currentQuestionText, normalizedReferenceAnswers, question]);
 
+  const polishedVersion = useMemo(() => {
+    if (!result) {
+      return "";
+    }
+
+    return result.polishedVersion || buildPolishedVersion(result.transcript);
+  }, [result]);
+
   const scoreItems = useMemo(() => {
     if (!result) {
       return [];
@@ -321,6 +344,10 @@ export function PracticeStudio({ question }: PracticeStudioProps) {
 
   useEffect(() => {
     return () => {
+      if (recordingTimerRef.current) {
+        window.clearInterval(recordingTimerRef.current);
+      }
+
       if (audioUrl) {
         URL.revokeObjectURL(audioUrl);
       }
@@ -369,6 +396,11 @@ export function PracticeStudio({ question }: PracticeStudioProps) {
   }, [spokenText]);
 
   const resetAttemptState = () => {
+    if (recordingTimerRef.current) {
+      window.clearInterval(recordingTimerRef.current);
+      recordingTimerRef.current = null;
+    }
+
     setResult(null);
     setAudioBlob(null);
     setDurationSeconds(0);
@@ -408,6 +440,10 @@ export function PracticeStudio({ question }: PracticeStudioProps) {
       };
 
       recorder.onstop = () => {
+        if (recordingTimerRef.current) {
+          window.clearInterval(recordingTimerRef.current);
+          recordingTimerRef.current = null;
+        }
         const blob = new Blob(chunksRef.current, { type: recorder.mimeType || "audio/webm" });
         const nextAudioUrl = URL.createObjectURL(blob);
         setAudioBlob(blob);
@@ -419,6 +455,13 @@ export function PracticeStudio({ question }: PracticeStudioProps) {
       };
 
       recorder.start();
+      if (recordingTimerRef.current) {
+        window.clearInterval(recordingTimerRef.current);
+        recordingTimerRef.current = null;
+      }
+      recordingTimerRef.current = window.setInterval(() => {
+        setDurationSeconds((current) => current + 1);
+      }, 1000);
       setRecorderState("recording");
       setStatus("正在录音，请直接回答当前题目。");
     } catch {
@@ -431,6 +474,12 @@ export function PracticeStudio({ question }: PracticeStudioProps) {
       recorderRef.current.stop();
     }
   };
+
+  const liveDurationLabel = useMemo(() => {
+    const minutes = Math.floor(durationSeconds / 60);
+    const seconds = durationSeconds % 60;
+    return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+  }, [durationSeconds]);
 
   const submitAssessment = async () => {
     if (!audioBlob) {
@@ -445,7 +494,7 @@ export function PracticeStudio({ question }: PracticeStudioProps) {
     }
 
     setRecorderState("submitting");
-    setStatus("正在分析你的回答，请稍候...");
+    setStatus("ChatGPT正在分析你的回答，请稍候...");
     setShowUpgradePrompt(false);
 
     const formData = new FormData();
@@ -673,6 +722,9 @@ export function PracticeStudio({ question }: PracticeStudioProps) {
 
             <div className="grid gap-2 text-sm text-[#6f675c]">
               <p>{status}</p>
+              {recorderState === "recording" ? (
+                <p className="font-medium text-[#b42318]">Recording Time: {liveDurationLabel}</p>
+              ) : null}
               <p>{usageLine}</p>
             </div>
 
@@ -833,33 +885,15 @@ export function PracticeStudio({ question }: PracticeStudioProps) {
               </div>
             </div>
 
-            <div className="rounded-[32px] border border-black/8 bg-white p-7 shadow-[0_18px_50px_rgba(16,24,40,0.06)]">
-              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[#8d7557]">Expression Upgrade</p>
-              <h2 className="mt-3 text-2xl font-semibold tracking-[-0.04em] text-[#101828]">低级表达怎么升级</h2>
-              <div className="mt-6 grid gap-4 xl:grid-cols-3">
-                {result.expressionUpgrades.map((item) => (
-                  <div key={item.original} className="rounded-[24px] border border-black/8 bg-[#fffdf8] p-5">
-                    <p className="text-sm font-medium text-[#8d7557]">原始表达</p>
-                    <p className="mt-2 text-base font-medium text-[#101828]">{item.original}</p>
-
-                    <div className="mt-5 grid gap-3">
-                      <div className="rounded-2xl bg-[#eef4ff] px-4 py-3">
-                        <p className="text-xs uppercase tracking-[0.22em] text-[#175cd3]">Band 6</p>
-                        <p className="mt-2 text-sm leading-7 text-[#1d2939]">{item.band6}</p>
-                      </div>
-                      <div className="rounded-2xl bg-[#fff4e8] px-4 py-3">
-                        <p className="text-xs uppercase tracking-[0.22em] text-[#b54708]">Band 7</p>
-                        <p className="mt-2 text-sm leading-7 text-[#1d2939]">{item.band7}</p>
-                      </div>
-                      <div className="rounded-2xl bg-[#e8f8ee] px-4 py-3">
-                        <p className="text-xs uppercase tracking-[0.22em] text-[#18794e]">Band 8</p>
-                        <p className="mt-2 text-sm leading-7 text-[#1d2939]">{item.band8}</p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+            {polishedVersion ? (
+              <div className="rounded-[32px] border border-black/8 bg-white p-7 shadow-[0_18px_50px_rgba(16,24,40,0.06)]">
+                <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[#8d7557]">Band 8 Polished Version</p>
+                <p className="mt-4 text-sm leading-7 text-[#667085]">
+                  This version keeps your original meaning, but upgrades the wording, sentence flow, and overall delivery to a stronger Band 8 level.
+                </p>
+                <p className="mt-6 text-lg leading-10 text-[#101828]">{polishedVersion}</p>
               </div>
-            </div>
+            ) : null}
 
             {referenceAnswer ? (
               <div className="rounded-[32px] border border-black/8 bg-white p-7 shadow-[0_18px_50px_rgba(16,24,40,0.06)]">
