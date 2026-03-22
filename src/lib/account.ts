@@ -130,7 +130,7 @@ export function mapUsageRowToAccountUsage(
     hasAvailableAnalysis:
       freeTrialsRemaining > 0 || membershipQuotaRemaining > 0 || activeAddonCreditsRemaining > 0,
     passwordSet,
-    requiresProfileSetup: !phone || !passwordSet,
+    requiresProfileSetup: false,
   };
 }
 
