@@ -42,11 +42,13 @@ export async function transcribeWithTencentOrFallback(audio: File, question: Dem
     return {
       transcript,
       provider: "tencent-cloud" as const,
+      error: null,
     };
-  } catch {
+  } catch (error) {
     return {
       transcript: buildFallbackTranscript(question),
       provider: "demo-fallback" as const,
+      error: error instanceof Error ? error.message : "Tencent ASR transcription failed.",
     };
   }
 }

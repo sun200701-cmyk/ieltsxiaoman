@@ -7,12 +7,13 @@ import { LoaderCircle, Mic, PauseCircle, Play, Volume2 } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
 import { deletePendingMockSubmission, loadPendingMockSubmission, saveMockReport, savePendingMockSubmission } from "@/lib/mock-report-storage";
 import { createFullMockTestSession } from "@/lib/mock-test";
-import type { MockPrompt, MockPromptTranscript, MockTestSession } from "@/lib/types";
+import type { MockAssessmentApiResponse, MockGenerationPhase, MockPrompt, MockPromptTranscript, MockTestSession } from "@/lib/types";
 
 type RecorderState = "idle" | "playing" | "preparing" | "ready" | "recording" | "processing" | "submitting";
 type PromptRecording = { blob: Blob | null; audioUrl: string | null; durationSeconds: number };
 type IntroductionStep = { line: string; waitSeconds: number };
 type SubmissionStage = "idle" | "uploading" | "transcribing" | "analyzing" | "finalizing";
+type SubmissionPhases = MockAssessmentApiResponse["phases"];
 
 const EXAMINER_NAMES = ["Emily Carter", "Charlotte Hughes", "Sophie Mitchell", "Hannah Wilson", "Victoria Ellison", "Lucy Green", "Anna Scott"];
 const formatDuration = (s: number) => `${Math.floor(Math.max(0, s) / 60)}:${String(Math.max(0, s) % 60).padStart(2, "0")}`;
@@ -29,6 +30,21 @@ function buildLeadIn(session: MockTestSession, prompts: MockPrompt[], index: num
   if (prompt.part === "Part 2" && prev?.part !== "Part 2") return "Now I'm going to give you a topic, and I'd like you to talk about it for one to two minutes. You have one minute to prepare. You can make some notes if you wish.";
   if (prompt.part === "Part 3" && prev?.part !== "Part 3") return `We've been talking about ${session.part2Topic}. Now I'd like to discuss some more general questions related to this topic.`;
   return "";
+}
+
+function getSubmissionStageWeight(stage: SubmissionStage) {
+  if (stage === "uploading") return 12;
+  if (stage === "transcribing") return 48;
+  if (stage === "analyzing") return 82;
+  if (stage === "finalizing") return 100;
+  return 0;
+}
+
+function getPhaseTone(status: MockGenerationPhase["status"]) {
+  if (status === "success") return "text-[#18794e] bg-[#e8f8ee]";
+  if (status === "fallback") return "text-[#b54708] bg-[#fff4e8]";
+  if (status === "failed") return "text-[#b42318] bg-[#fff1f1]";
+  return "text-[#667085] bg-[#f7f3ea]";
 }
 
 export function FullMockTest() {
@@ -58,6 +74,8 @@ export function FullMockTest() {
   const [restoring, setRestoring] = useState(false);
   const [submissionProgress, setSubmissionProgress] = useState(0);
   const [submissionStage, setSubmissionStage] = useState<SubmissionStage>("idle");
+  const [submissionPhases, setSubmissionPhases] = useState<SubmissionPhases | null>(null);
+  const [submissionWarnings, setSubmissionWarnings] = useState<string[]>([]);
 
   const recorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -124,6 +142,12 @@ export function FullMockTest() {
         return Math.min(next, 92);
       });
     }, 1200);
+
+    setSubmissionPhases({
+      transcription: { status: "pending", message: "等待服务器开始转写" },
+      assessment: { status: "pending", message: "等待转写完成后生成报告" },
+    });
+    setSubmissionWarnings([]);
 
     return () => {
       if (submissionTimerRef.current) window.clearInterval(submissionTimerRef.current);
@@ -299,6 +323,11 @@ export function FullMockTest() {
             ? "正在整理报告页面"
             : "等待开始";
 
+  const submissionDetails = [
+    submissionPhases ? { label: "录音转写", phase: submissionPhases.transcription } : null,
+    submissionPhases ? { label: "AI 报告", phase: submissionPhases.assessment } : null,
+  ].filter((item): item is { label: string; phase: MockGenerationPhase } => Boolean(item));
+
   const handleSubmit = useCallback(async () => {
     if (!allRecorded) { setStatus("请先完成整套录音，再统一生成模考报告。"); return; }
     if (!user || !accessToken) {
@@ -306,6 +335,8 @@ export function FullMockTest() {
       router.push(`/me?returnTo=${encodeURIComponent(`/mock/full?resumeMock=1&sessionId=${session.id}`)}`);
       return;
     }
+    setSubmissionPhases(null);
+    setSubmissionWarnings([]);
     setSubmissionStage("uploading");
     setSubmissionProgress(8);
     setRecorderState("submitting"); setStatus("正在生成 Mock Report，请稍候。");
@@ -316,35 +347,56 @@ export function FullMockTest() {
     formData.append("totalDurationSeconds", String(Math.round(totalDurationSeconds)));
     recordings.forEach((item, index) => { if (item.blob) formData.append(`audio_${index}`, item.blob, `${session.prompts[index]?.id ?? index}.ogg`); });
     const response = await fetch("/api/mock-assessment", { method: "POST", headers: { Authorization: `Bearer ${accessToken}` }, body: formData });
+    let payload: MockAssessmentApiResponse | null = null;
+    try {
+      payload = (await response.json()) as MockAssessmentApiResponse;
+    } catch {
+      payload = null;
+    }
+
+    if (payload?.phases) {
+      setSubmissionPhases(payload.phases);
+      setSubmissionWarnings(payload.warnings ?? []);
+      const nextStage =
+        payload.phases.assessment.status === "success" || payload.phases.assessment.status === "fallback"
+          ? "finalizing"
+          : payload.phases.transcription.status === "success" || payload.phases.transcription.status === "fallback"
+            ? "analyzing"
+            : "transcribing";
+      setSubmissionStage(nextStage);
+      setSubmissionProgress(getSubmissionStageWeight(nextStage));
+    }
+
     if (response.status === 401) {
-      setSubmissionProgress(100);
-      setSubmissionStage("finalizing");
+      setSubmissionProgress(getSubmissionStageWeight("transcribing"));
+      setSubmissionStage("transcribing");
       setRecorderState("ready"); await persistPendingSubmission();
       router.push(`/me?returnTo=${encodeURIComponent(`/mock/full?resumeMock=1&sessionId=${session.id}`)}`); return;
     }
     if (response.status === 403) {
-      setSubmissionProgress(100);
-      setSubmissionStage("finalizing");
-      setRecorderState("ready"); await persistPendingSubmission(); setShowUpgradePrompt(true); setStatus("当前可用次数不足，请先开通对应方案后再继续生成模考报告。"); return;
-    }
-    if (!response.ok) {
-      setSubmissionProgress(100);
-      setSubmissionStage("finalizing");
       setRecorderState("ready");
-      try {
-        const payload = await response.json();
-        setStatus(typeof payload?.error === "string" ? payload.error : "Mock Report 生成失败，请稍后重试。");
-      } catch {
-        setStatus("Mock Report 生成失败，请稍后重试。");
-      }
+      await persistPendingSubmission();
+      setShowUpgradePrompt(true);
+      setStatus(payload?.error || "当前可用次数不足，请先开通对应方案后再继续生成模考报告。");
       return;
     }
-    const result = await response.json();
+    if (!response.ok || !payload?.ok || !payload.result) {
+      setRecorderState("ready");
+      const failureReason = payload?.phases.assessment.reason || payload?.phases.transcription.reason || payload?.error;
+      setStatus(failureReason || "Mock Report 生成失败，请稍后重试。");
+      return;
+    }
+
+    const result = payload.result;
     setSubmissionProgress(100);
     setSubmissionStage("finalizing");
     saveMockReport(session.id, { session, result });
     await deletePendingMockSubmission(session.id); await refreshUsage();
-    setStatus("Mock Report 已生成，正在进入报告页面。");
+    if (payload.phases.transcription.status === "fallback" || payload.phases.assessment.status === "fallback") {
+      setStatus("Mock Report 已生成，但其中一个阶段已降级为兜底结果。你仍可进入报告查看详情。");
+    } else {
+      setStatus("Mock Report 已生成，正在进入报告页面。");
+    }
     router.push(`/mock/full/report/${session.id}`);
   }, [accessToken, allRecorded, persistPendingSubmission, recordings, refreshUsage, router, session, totalDurationSeconds, user]);
 
@@ -412,7 +464,7 @@ export function FullMockTest() {
           </div>
           <div className="grid gap-2 text-center text-sm leading-6 text-[#6f675c]">
             <p>{status}</p>
-            {recorderState === "submitting" ? (
+            {recorderState === "submitting" || submissionDetails.length ? (
               <div className="mx-auto grid w-full max-w-xl gap-3 rounded-[24px] border border-[#d9d6cf] bg-[#fffcf6] px-4 py-4 text-left sm:px-5">
                 <div className="flex items-center justify-between gap-3 text-xs uppercase tracking-[0.22em] text-[#8d7557]">
                   <span>{submissionStageLabel}</span>
@@ -422,6 +474,37 @@ export function FullMockTest() {
                   <div className="h-full rounded-full bg-[#101828] transition-all duration-700" style={{ width: `${submissionProgress}%` }} />
                 </div>
                 <p className="text-xs leading-6 text-[#6f675c]">生成阶段会按上传录音、转写、分析、整理报告依次推进，避免长时间无反馈。</p>
+                {submissionDetails.length ? (
+                  <div className="grid gap-2">
+                    {submissionDetails.map((item) => (
+                      <div key={item.label} className="rounded-[18px] border border-black/6 bg-white px-4 py-3">
+                        <div className="flex items-center justify-between gap-3">
+                          <p className="text-sm font-medium text-[#101828]">{item.label}</p>
+                          <span className={`rounded-full px-2.5 py-1 text-[11px] font-medium ${getPhaseTone(item.phase.status)}`}>
+                            {item.phase.status === "success"
+                              ? "成功"
+                              : item.phase.status === "fallback"
+                                ? "已降级"
+                                : item.phase.status === "failed"
+                                  ? "失败"
+                                  : "处理中"}
+                          </span>
+                        </div>
+                        <p className="mt-2 text-xs leading-6 text-[#5b5349]">{item.phase.message}</p>
+                        {item.phase.reason ? <p className="mt-2 text-xs leading-6 text-[#b42318]">原因：{item.phase.reason}</p> : null}
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+                {submissionWarnings.length ? (
+                  <div className="grid gap-2">
+                    {submissionWarnings.map((warning, index) => (
+                      <p key={`${warning}-${index}`} className="rounded-[18px] bg-[#fff4e8] px-4 py-3 text-xs leading-6 text-[#b54708]">
+                        {warning}
+                      </p>
+                    ))}
+                  </div>
+                ) : null}
               </div>
             ) : null}
             <p>{usageLine}</p>

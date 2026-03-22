@@ -164,3 +164,25 @@ export type MockAssessmentResult = {
   provider: "ai-scored" | "demo-fallback";
   transcriptProvider: "tencent-cloud" | "demo-fallback";
 };
+
+export type MockGenerationPhaseStatus = "pending" | "success" | "fallback" | "failed";
+
+export type MockGenerationPhase = {
+  status: MockGenerationPhaseStatus;
+  message: string;
+  reason?: string;
+  provider?: string;
+  failedPromptIds?: string[];
+};
+
+export type MockAssessmentApiResponse = {
+  ok: boolean;
+  code?: string;
+  error?: string;
+  result?: MockAssessmentResult;
+  warnings?: string[];
+  phases: {
+    transcription: MockGenerationPhase;
+    assessment: MockGenerationPhase;
+  };
+};
