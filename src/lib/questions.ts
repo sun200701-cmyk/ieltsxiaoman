@@ -233,7 +233,6 @@ export const questions: DemoQuestion[] = [
     "followUps": [
       "What were your favourite activities when you were a child?",
       "Did you prefer to do activities alone or with a group of people when you were a child?",
-      "（小问待补充）"
     ],
     "tags": [
       "Mainland New",
@@ -253,7 +252,6 @@ export const questions: DemoQuestion[] = [
     "followUps": [
       "Do you prefer views in urban areas or rural areas?",
       "Do you prefer views in your own country or in other countries?",
-      "（小问待补充）"
     ],
     "tags": [
       "Mainland New",

@@ -121,6 +121,141 @@ function sanitizePromptBreakdowns(value: unknown): MockPromptBreakdown[] {
     .filter((item) => item.id && item.prompt);
 }
 
+function buildFallbackPromptBreakdown(transcript: MockPromptTranscript): MockPromptBreakdown {
+  const cleaned = transcript.transcript.trim();
+
+  return {
+    id: transcript.id,
+    part: transcript.part,
+    topic: transcript.topic,
+    prompt: transcript.prompt,
+    score: 0,
+    summary: cleaned
+      ? "这道题暂时没有生成完整结构化点评，当前先保留原始转写，便于继续人工复盘。"
+      : "这道题暂时没有可用转写，因此没有生成逐题点评。",
+    strengths: cleaned ? ["已保留原始转写，可继续检查是否切题、是否有展开。"] : [],
+    weaknesses: cleaned
+      ? ["模型没有返回这道题的完整逐题分析，建议稍后重新生成完整报告。"]
+      : ["当前没有可用 transcript，暂时无法判断这道题的具体问题。"],
+    conclusion: cleaned
+      ? "建议稍后重新生成完整报告，避免基于不完整分析做判断。"
+      : "建议先确保录音转写成功，再重新生成完整报告。",
+    masteredPhrases: [],
+    polishedVersion: "",
+  };
+}
+
+function buildFallbackPartBreakdown(
+  part: "Part 1" | "Part 2" | "Part 3",
+  transcripts: MockPromptTranscript[],
+  prompts: MockPromptBreakdown[],
+): MockPartBreakdown {
+  const promptScores = prompts.map((item) => item.score).filter((score) => score > 0);
+  const averageScore = promptScores.length
+    ? Math.round((promptScores.reduce((sum, score) => sum + score, 0) / promptScores.length) * 2) / 2
+    : 0;
+
+  return {
+    part,
+    topic: transcripts[0]?.topic ?? part,
+    score: averageScore,
+    summary:
+      promptScores.length > 0
+        ? "这一部分的结构化总结不完整，当前先根据已返回的逐题结果保留概要。"
+        : "这一部分暂时没有生成完整结构化总结，建议查看逐题转写并稍后重新生成报告。",
+    strengths: promptScores.length > 0 ? ["已保留该部分的逐题结果，可先结合单题页面继续复盘。"] : [],
+    weaknesses: ["当前模型没有完整返回该部分总结，建议稍后重新生成完整报告。"],
+  };
+}
+
+function buildFallbackCriteria(payload: Record<string, unknown>): MockCriterionBreakdown[] {
+  const definitions: Array<{
+    criterion: MockCriterionBreakdown["criterion"];
+    scoreKey: "fluency" | "lexical" | "grammar" | "pronunciation";
+    strength: string;
+    weakness: string;
+  }> = [
+    {
+      criterion: "Fluency",
+      scoreKey: "fluency",
+      strength: "回答基本完成，具备继续稳定输出的基础。",
+      weakness: "如果想拿到更高分，需要继续提升展开深度与连续表达。",
+    },
+    {
+      criterion: "Lexical",
+      scoreKey: "lexical",
+      strength: "已有基础词汇可用于完成答题。",
+      weakness: "需要补充更具体、更自然的主题词汇与搭配。",
+    },
+    {
+      criterion: "Grammatical",
+      scoreKey: "grammar",
+      strength: "基本句型可以支撑完成回答。",
+      weakness: "语法稳定性和句式层次仍有提升空间。",
+    },
+    {
+      criterion: "Pronunciation",
+      scoreKey: "pronunciation",
+      strength: "当前回答可用于继续训练语音语调。",
+      weakness: "仅基于转写做保守估计，建议结合录音继续复盘。",
+    },
+  ];
+
+  return definitions.map((item) => ({
+    criterion: item.criterion,
+    score: clampBand(Number(payload[item.scoreKey] ?? 0)),
+    strengths: [item.strength],
+    weaknesses: [item.weakness],
+    conclusion: `${item.criterion} 维度已保留基础评分，建议在完整报告恢复后继续查看更细分析。`,
+  }));
+}
+
+function mergePromptBreakdowns(transcripts: MockPromptTranscript[], promptBreakdowns: MockPromptBreakdown[]) {
+  const breakdownMap = new Map(promptBreakdowns.map((item) => [item.id, item]));
+
+  return transcripts.map((transcript) => {
+    const matched = breakdownMap.get(transcript.id);
+    const fallback = buildFallbackPromptBreakdown(transcript);
+
+    if (!matched) {
+      return fallback;
+    }
+
+    return {
+      ...fallback,
+      ...matched,
+      score: matched.score > 0 ? matched.score : fallback.score,
+      summary: matched.summary || fallback.summary,
+      strengths: matched.strengths.length ? matched.strengths : fallback.strengths,
+      weaknesses: matched.weaknesses.length ? matched.weaknesses : fallback.weaknesses,
+      conclusion: matched.conclusion || fallback.conclusion,
+      masteredPhrases: matched.masteredPhrases.length ? matched.masteredPhrases : fallback.masteredPhrases,
+      polishedVersion: matched.polishedVersion || fallback.polishedVersion,
+    };
+  });
+}
+
+function mergePartBreakdowns(
+  transcripts: MockPromptTranscript[],
+  partBreakdowns: MockPartBreakdown[],
+  promptBreakdowns: MockPromptBreakdown[],
+) {
+  const partMap = new Map(partBreakdowns.map((item) => [item.part, item]));
+
+  return (["Part 1", "Part 2", "Part 3"] as const).map((part) => {
+    const matched = partMap.get(part);
+    if (matched) {
+      return matched;
+    }
+
+    return buildFallbackPartBreakdown(
+      part,
+      transcripts.filter((item) => item.part === part),
+      promptBreakdowns.filter((item) => item.part === part),
+    );
+  });
+}
+
 function buildPrompt({ session, transcripts, totalDurationSeconds }: GenerateMockAssessmentOptions) {
   const transcriptBlock = transcripts
     .map(
@@ -251,24 +386,22 @@ export async function generateMockAiAssessment(
     throw new Error("Mock assessment response content is empty.");
   }
 
-  const payload = parseJsonContent(content);
+  const payload = parseJsonContent(content) as Record<string, unknown>;
   const criteria = sanitizeCriterion(payload.criteria);
-  const partBreakdowns = sanitizePartBreakdowns(payload.partBreakdowns);
-  const promptBreakdowns = sanitizePromptBreakdowns(payload.promptBreakdowns);
+  const sanitizedPartBreakdowns = sanitizePartBreakdowns(payload.partBreakdowns);
+  const sanitizedPromptBreakdowns = sanitizePromptBreakdowns(payload.promptBreakdowns);
+  const promptBreakdowns = mergePromptBreakdowns(options.transcripts, sanitizedPromptBreakdowns);
+  const partBreakdowns = mergePartBreakdowns(options.transcripts, sanitizedPartBreakdowns, promptBreakdowns);
   const improvementPlan = sanitizeStringArray(payload.improvementPlan, 5);
-
-  if (criteria.length !== 4) {
-    throw new Error("Mock assessment criteria are incomplete.");
-  }
-  if (partBreakdowns.length !== 3) {
-    throw new Error("Mock assessment part breakdowns are incomplete.");
-  }
-  if (promptBreakdowns.length !== options.transcripts.length) {
-    throw new Error("Mock assessment prompt breakdowns are incomplete.");
-  }
-  if (improvementPlan.length < 3) {
-    throw new Error("Mock assessment improvement plan is incomplete.");
-  }
+  const resolvedCriteria = criteria.length === 4 ? criteria : buildFallbackCriteria(payload);
+  const resolvedImprovementPlan =
+    improvementPlan.length >= 3
+      ? improvementPlan
+      : [
+          "先逐题复盘转写，确认每道题是否直接回应了问题。",
+          "优先补强回答展开，尽量形成“观点 + 原因 + 例子”的结构。",
+          "把高频口语搭配和连接表达整理成清单，做一轮跟读和替换练习。",
+        ];
 
   return {
     predictedOverallBand: clampBand(Number(payload.predictedOverallBand ?? 0)),
@@ -285,10 +418,10 @@ export async function generateMockAiAssessment(
       typeof payload.confidenceNote === "string" && payload.confidenceNote.trim()
         ? payload.confidenceNote.trim()
         : "本次分数基于完整全真模考的录音与转写生成，仅供练习参考。",
-    criteria,
+    criteria: resolvedCriteria,
     partBreakdowns,
     promptBreakdowns,
-    improvementPlan,
+    improvementPlan: resolvedImprovementPlan,
     transcripts: options.transcripts,
     provider: "ai-scored",
     transcriptProvider: "tencent-cloud",

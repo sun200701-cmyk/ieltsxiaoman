@@ -742,7 +742,7 @@ export function PracticeStudio({ question }: PracticeStudioProps) {
         {result ? (
           <section className="grid gap-8">
             <div className="grid gap-5 lg:grid-cols-[320px_1fr]">
-              <div className="rounded-[28px] bg-[#101828] p-6 text-white shadow-[0_24px_60px_rgba(16,24,40,0.18)] sm:rounded-[32px] sm:p-8">
+            <div className="rounded-[28px] bg-[#101828] p-6 text-white shadow-[0_24px_60px_rgba(16,24,40,0.18)] sm:rounded-[32px] sm:p-8">
                 <p className="text-[5rem] font-semibold leading-none tracking-[-0.08em]">
                   {formatScore(result.overallBand)}
                 </p>
