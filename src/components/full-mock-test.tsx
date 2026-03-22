@@ -60,10 +60,10 @@ export function FullMockTest() {
   const streamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<BlobPart[]>([]);
   const startedAtRef = useRef<number | null>(null);
-  const elapsedTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const prepTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const introTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const speechTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const elapsedTimerRef = useRef<number | null>(null);
+  const prepTimerRef = useRef<number | null>(null);
+  const introTimerRef = useRef<number | null>(null);
+  const speechTimerRef = useRef<number | null>(null);
   const restoredRef = useRef(false);
   const autoSubmittedRef = useRef(false);
   const recordingsRef = useRef(recordings);
