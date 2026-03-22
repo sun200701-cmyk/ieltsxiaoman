@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { User } from "lucide-react";
+import { Menu, User, X } from "lucide-react";
+import { useState } from "react";
 
 import { useAuth } from "@/components/auth-provider";
 
@@ -51,6 +52,7 @@ function getLinkClass(active: boolean) {
 export function SiteHeader() {
   const pathname = usePathname();
   const { user } = useAuth();
+  const [menuOpen, setMenuOpen] = useState(false);
 
   if (pathname === "/me" && !user) {
     return null;
@@ -60,12 +62,12 @@ export function SiteHeader() {
 
   return (
     <header className="sticky top-0 z-40 border-b border-black/8 bg-[rgba(251,248,241,0.9)] backdrop-blur">
-      <div className="mx-auto flex w-full max-w-[1480px] items-center px-6 py-4 lg:px-10">
+      <div className="mx-auto flex w-full max-w-[1480px] items-center px-4 py-4 sm:px-6 lg:px-10">
         <Link href="/" className="text-[2rem] font-semibold tracking-[-0.05em] text-[#101828]">
           {"\u96c5\u5c0f\u6ee1"}
         </Link>
 
-        <nav className="ml-auto flex items-center gap-2 md:gap-4">
+        <nav className="ml-auto hidden items-center gap-2 md:flex md:gap-4">
           {navItems.map((item) => {
             const active = item.active(pathname);
 
@@ -90,7 +92,49 @@ export function SiteHeader() {
             <span>{"\u6211\u7684"}</span>
           </Link>
         </nav>
+
+        <button
+          type="button"
+          aria-label={menuOpen ? "Close navigation menu" : "Open navigation menu"}
+          aria-expanded={menuOpen}
+          onClick={() => setMenuOpen((current) => !current)}
+          className="ml-auto inline-flex h-12 w-12 items-center justify-center rounded-full border border-black/8 bg-[#fffdf8] text-[#101828] transition hover:bg-white md:hidden"
+        >
+          {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+        </button>
       </div>
+
+      {menuOpen ? (
+        <div className="border-t border-black/8 bg-[rgba(251,248,241,0.96)] px-4 py-4 md:hidden">
+          <nav className="mx-auto grid w-full max-w-[1480px] gap-2">
+            {navItems.map((item) => {
+              const active = item.active(pathname);
+
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setMenuOpen(false)}
+                  aria-current={active ? "page" : undefined}
+                  className={getLinkClass(active)}
+                >
+                  <span>{item.label}</span>
+                </Link>
+              );
+            })}
+
+            <Link
+              href="/me"
+              onClick={() => setMenuOpen(false)}
+              aria-current={isMeActive ? "page" : undefined}
+              className={`${getLinkClass(isMeActive)} gap-2`}
+            >
+              <User className="h-4 w-4 shrink-0" />
+              <span>{"\u6211\u7684"}</span>
+            </Link>
+          </nav>
+        </div>
+      ) : null}
     </header>
   );
 }

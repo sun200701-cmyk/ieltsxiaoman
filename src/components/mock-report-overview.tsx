@@ -32,20 +32,12 @@ function derivePartScore(
     .filter((item) => item.part === part && item.score > 0)
     .map((item) => item.score);
 
-  if (promptScores.length) {
-    const average = promptScores.reduce((sum, score) => sum + score, 0) / promptScores.length;
-    return Math.round(average * 2) / 2;
+  if (!promptScores.length) {
+    return 0;
   }
 
-  if (part === "Part 1") {
-    return Math.round(((result.fluency + result.lexical) / 2) * 2) / 2;
-  }
-
-  if (part === "Part 2") {
-    return Math.round(((result.fluency + result.lexical + result.grammar) / 3) * 2) / 2;
-  }
-
-  return Math.round(((result.grammar + result.pronunciation) / 2) * 2) / 2;
+  const average = promptScores.reduce((sum, score) => sum + score, 0) / promptScores.length;
+  return Math.round(average * 2) / 2;
 }
 
 export function MockReportOverview({ sessionId }: Props) {
@@ -56,17 +48,17 @@ export function MockReportOverview({ sessionId }: Props) {
       return [];
     }
 
-      return (["Part 1", "Part 2", "Part 3"] as const).map((part) => {
-        const breakdown = payload.result.partBreakdowns.find((item) => item.part === part);
-        return {
-          part,
-          count: payload.session.prompts.filter((item) => item.part === part).length,
-          summary: breakdown?.summary || `${part} 的报告已生成，点击查看这一部分的逐题分析。`,
-          score: derivePartScore(payload.result, part),
-          strengths: breakdown?.strengths ?? [],
-          weaknesses: breakdown?.weaknesses ?? [],
-        };
-      });
+    return (["Part 1", "Part 2", "Part 3"] as const).map((part) => {
+      const breakdown = payload.result.partBreakdowns.find((item) => item.part === part);
+      return {
+        part,
+        count: payload.session.prompts.filter((item) => item.part === part).length,
+        summary: breakdown?.summary || "这一部分没有生成结构化总结，请打开分题页查看原始转写和逐题结果。",
+        score: derivePartScore(payload.result, part),
+        strengths: breakdown?.strengths ?? [],
+        weaknesses: breakdown?.weaknesses ?? [],
+      };
+    });
   }, [payload]);
 
   if (!payload) {
@@ -150,7 +142,9 @@ export function MockReportOverview({ sessionId }: Props) {
               </div>
               <div className="rounded-[20px] bg-[#101828] px-4 py-3 text-center text-white">
                 <p className="text-xs uppercase tracking-[0.2em] text-white/70">Score</p>
-                <p className="mt-2 text-3xl font-semibold leading-none">{formatScore(item.score)}</p>
+                <p className="mt-2 text-3xl font-semibold leading-none">
+                  {item.score > 0 ? formatScore(item.score) : "--"}
+                </p>
               </div>
             </div>
 

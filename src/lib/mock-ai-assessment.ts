@@ -205,128 +205,9 @@ Requirements:
   `.trim();
 }
 
-export function buildFallbackMockAssessment({
-  session,
-  transcripts,
-  totalDurationSeconds,
-  transcriptProvider,
-}: GenerateMockAssessmentOptions & { transcriptProvider: "tencent-cloud" | "demo-fallback" }): MockAssessmentResult {
-  const criteria: MockCriterionBreakdown[] = [
-    {
-      criterion: "Fluency",
-      score: 6.5,
-      strengths: ["整套回答能够持续输出内容，基本没有完全卡住。", "Part 1 和 Part 3 的应答速度还不错。"],
-      weaknesses: ["部分回答仍有明显停顿。", "展开的稳定性还不够，越往后越容易变短。"],
-      conclusion: "流利度已经具备中档基础，但还需要通过更稳定的展开和更自然的连接来冲击更高分。",
-    },
-    {
-      criterion: "Lexical",
-      score: 6.5,
-      strengths: ["能够使用一些主题相关词汇。", "个别回答有一定概括表达能力。"],
-      weaknesses: ["高分词组的稳定使用还不够。", "有些表达仍然偏普通，替换空间较大。"],
-      conclusion: "词汇处于中档水平，接下来要重点做表达升级和搭配积累。",
-    },
-    {
-      criterion: "Grammatical",
-      score: 6,
-      strengths: ["基本句子结构是完整的。", "大部分信息都能够表达清晰。"],
-      weaknesses: ["复杂句比例不高。", "个别动词形式和时态细节还不稳定。"],
-      conclusion: "语法是当前提分瓶颈之一，需要通过稳定复杂句和细节纠错来提升。",
-    },
-    {
-      criterion: "Pronunciation",
-      score: 6.5,
-      strengths: ["整体可懂度尚可。", "关键词基本能被识别。"],
-      weaknesses: ["部分句子节奏不够自然。", "重音和连读的表现还有提升空间。"],
-      conclusion: "发音可以作为辅助提分项，重点要提高节奏感和重点表达的清晰度。",
-    },
-  ];
-
-  const partBreakdowns: MockPartBreakdown[] = [
-    {
-      part: "Part 1",
-      topic: `${session.part1RequiredTheme} / ${session.part1GeneralTheme}`,
-      score: 6.5,
-      summary: "Part 1 整体切题，但短答的稳定性和展开完整度还可以继续加强。",
-      strengths: ["进入回答速度较快。", "主题覆盖较完整。"],
-      weaknesses: ["个别小题展开偏短。", "观点和例子的层次感不够强。"],
-    },
-    {
-      part: "Part 2",
-      topic: session.part2Topic,
-      score: 6.5,
-      summary: "Part 2 有基本结构，但故事细节和亮点表达仍然不足。",
-      strengths: ["能够围绕 cue card 回答。", "核心信息基本完整。"],
-      weaknesses: ["细节不够丰富。", "亮点句型和自然衔接不够。"],
-    },
-    {
-      part: "Part 3",
-      topic: session.part3Topic,
-      score: 6,
-      summary: "Part 3 有一定思路，但抽象讨论时还需要更清晰的观点和论证。",
-      strengths: ["能够回应抽象问题。", "观点表达有基础。"],
-      weaknesses: ["论证深度不足。", "连接词和逻辑组织还需要加强。"],
-    },
-  ];
-
-  const promptBreakdowns: MockPromptBreakdown[] = transcripts.map((item) => ({
-    id: item.id,
-    part: item.part,
-    topic: item.topic,
-    prompt: item.prompt,
-    score: item.part === "Part 3" ? 6 : 6.5,
-    summary: "这道题基本完成了核心回答，但仍然有继续展开和优化表达的空间。",
-    strengths: ["能够正面回应题目。", "有基本的观点表达。"],
-    weaknesses: ["细节支撑还不够。", "高分表达和复杂句比例不足。"],
-    conclusion: "先把这道题练到“观点 + 原因 + 例子”的完整结构，会更接近高分回答。",
-    masteredPhrases: ["in my opinion", "for example", "in real life", "as a result"],
-    polishedVersion:
-      item.transcript.trim().length > 0
-        ? item.transcript
-            .replace(/\bI think\b/gi, "I would say")
-            .replace(/\breally\b/gi, "genuinely")
-            .replace(/\bvery\b/gi, "fairly")
-            .replace(/\bgood\b/gi, "beneficial")
-            .replace(/\bbad\b/gi, "less effective")
-        : "",
-  }));
-
-  return {
-    predictedOverallBand: 6.5,
-    fluency: 6.5,
-    lexical: 6.5,
-    grammar: 6,
-    pronunciation: 6.5,
-    completedAt: new Date().toISOString(),
-    totalDurationSeconds,
-    part1Theme: `${session.part1RequiredTheme} / ${session.part1GeneralTheme}`,
-    part2Topic: session.part2Topic,
-    part3Topic: session.part3Topic,
-    confidenceNote: "本次分数基于完整 Mock Test 的整体表现生成，仅供练习参考。",
-    criteria,
-    partBreakdowns,
-    promptBreakdowns,
-    improvementPlan: [
-      "先把 Part 1 的每一道题稳定到“观点 + 原因 + 例子”的三步结构。",
-      "Part 2 重点补细节，避免只说骨架不说画面。",
-      "Part 3 练习抽象题时的立场表达和论证深度。",
-      "每天复盘 3 个可复用的高分词组，并主动带入回答。",
-      "针对语法和发音做录音回听，优先修正最影响可懂度的问题。",
-    ],
-    transcripts,
-    provider: "demo-fallback",
-    transcriptProvider,
-  };
-}
-
 export async function generateMockAiAssessment(
   options: GenerateMockAssessmentOptions,
-): Promise<
-  Omit<
-    MockAssessmentResult,
-    "completedAt" | "totalDurationSeconds" | "part1Theme" | "part2Topic" | "part3Topic" | "transcripts" | "provider" | "transcriptProvider"
-  >
-> {
+): Promise<MockAssessmentResult> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
     throw new Error("OPENAI_API_KEY is missing.");
@@ -371,6 +252,23 @@ export async function generateMockAiAssessment(
   }
 
   const payload = parseJsonContent(content);
+  const criteria = sanitizeCriterion(payload.criteria);
+  const partBreakdowns = sanitizePartBreakdowns(payload.partBreakdowns);
+  const promptBreakdowns = sanitizePromptBreakdowns(payload.promptBreakdowns);
+  const improvementPlan = sanitizeStringArray(payload.improvementPlan, 5);
+
+  if (criteria.length !== 4) {
+    throw new Error("Mock assessment criteria are incomplete.");
+  }
+  if (partBreakdowns.length !== 3) {
+    throw new Error("Mock assessment part breakdowns are incomplete.");
+  }
+  if (promptBreakdowns.length !== options.transcripts.length) {
+    throw new Error("Mock assessment prompt breakdowns are incomplete.");
+  }
+  if (improvementPlan.length < 3) {
+    throw new Error("Mock assessment improvement plan is incomplete.");
+  }
 
   return {
     predictedOverallBand: clampBand(Number(payload.predictedOverallBand ?? 0)),
@@ -378,13 +276,21 @@ export async function generateMockAiAssessment(
     lexical: clampBand(Number(payload.lexical ?? 0)),
     grammar: clampBand(Number(payload.grammar ?? 0)),
     pronunciation: clampBand(Number(payload.pronunciation ?? 0)),
+    completedAt: new Date().toISOString(),
+    totalDurationSeconds: options.totalDurationSeconds,
+    part1Theme: `${options.session.part1RequiredTheme} / ${options.session.part1GeneralTheme}`,
+    part2Topic: options.session.part2Topic,
+    part3Topic: options.session.part3Topic,
     confidenceNote:
       typeof payload.confidenceNote === "string" && payload.confidenceNote.trim()
         ? payload.confidenceNote.trim()
-        : "本次分数基于完整 Mock Test 的整体表现生成，仅供练习参考。",
-    criteria: sanitizeCriterion(payload.criteria),
-    partBreakdowns: sanitizePartBreakdowns(payload.partBreakdowns),
-    promptBreakdowns: sanitizePromptBreakdowns(payload.promptBreakdowns),
-    improvementPlan: sanitizeStringArray(payload.improvementPlan, 5),
+        : "本次分数基于完整全真模考的录音与转写生成，仅供练习参考。",
+    criteria,
+    partBreakdowns,
+    promptBreakdowns,
+    improvementPlan,
+    transcripts: options.transcripts,
+    provider: "ai-scored",
+    transcriptProvider: "tencent-cloud",
   };
 }

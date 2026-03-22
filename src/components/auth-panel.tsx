@@ -20,7 +20,7 @@ export function AuthPanel() {
   }, [returnTo, router, usage?.requiresProfileSetup, user]);
 
   return (
-    <section className="w-full max-w-3xl">
+    <section className="w-full">
       <AuthCard />
     </section>
   );

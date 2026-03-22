@@ -7,8 +7,8 @@ import {
   getAvailableAnalysisCredits,
   getAuthenticatedUser,
 } from "@/lib/account";
-import { buildFallbackMockAssessment, generateMockAiAssessment } from "@/lib/mock-ai-assessment";
 import { transcribeWithTencentOrFallback } from "@/lib/demo-assessment";
+import { generateMockAiAssessment } from "@/lib/mock-ai-assessment";
 import type { DemoQuestion, MockPromptTranscript, MockTestSession } from "@/lib/types";
 
 function getAccessToken(request: Request) {
@@ -35,7 +35,7 @@ export async function POST(request: Request) {
   const accessToken = getAccessToken(request);
   if (!accessToken) {
     return NextResponse.json(
-      { code: "login_required", error: "登录后才能生成整套模考报告。" },
+      { code: "login_required", error: "登录后才能生成整套全真模考报告。" },
       { status: 401 },
     );
   }
@@ -61,7 +61,7 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           code: "membership_required",
-          error: "Free 用户当前仅可体验全真模考答题流程，正式生成 Mock Report 需先开通 Pro 或 Ultra。",
+          error: "Free 用户当前仅可体验全真模考答题流程，生成正式 Mock Report 前需要先开通 Pro 或 Ultra。",
           usage,
         },
         { status: 403 },
@@ -82,7 +82,6 @@ export async function POST(request: Request) {
     }
 
     const transcripts: MockPromptTranscript[] = [];
-    let transcriptProvider: "tencent-cloud" | "demo-fallback" = "tencent-cloud";
 
     for (let index = 0; index < metadata.length; index += 1) {
       const item = metadata[index];
@@ -96,7 +95,13 @@ export async function POST(request: Request) {
       const { transcript, provider } = await transcribeWithTencentOrFallback(audio, question);
 
       if (provider === "demo-fallback") {
-        transcriptProvider = "demo-fallback";
+        return NextResponse.json(
+          {
+            code: "transcript_unavailable",
+            error: "本次录音转写失败，系统已停止生成报告，未写入任何模拟 transcript 或默认评分。请稍后重试。",
+          },
+          { status: 503 },
+        );
       }
 
       transcripts.push({
@@ -105,41 +110,24 @@ export async function POST(request: Request) {
       });
     }
 
-    const fallback = buildFallbackMockAssessment({
-      session,
-      transcripts,
-      totalDurationSeconds,
-      transcriptProvider,
-    });
-
-    let result = fallback;
-
     try {
-      const aiResult = await generateMockAiAssessment({
+      const result = await generateMockAiAssessment({
         session,
         transcripts,
         totalDurationSeconds,
       });
 
-      result = {
-        ...fallback,
-        ...aiResult,
-        completedAt: new Date().toISOString(),
-        totalDurationSeconds,
-        part1Theme: `${session.part1RequiredTheme} / ${session.part1GeneralTheme}`,
-        part2Topic: session.part2Topic,
-        part3Topic: session.part3Topic,
-        transcripts,
-        provider: "ai-scored",
-        transcriptProvider,
-      };
+      await consumeAnalysisCredits(supabase, usage, answeredCount);
+      return NextResponse.json(result);
     } catch {
-      result = fallback;
+      return NextResponse.json(
+        {
+          code: "assessment_unavailable",
+          error: "本次 AI 评分未成功生成，系统没有回填任何默认分数或默认点评。请稍后重试。",
+        },
+        { status: 503 },
+      );
     }
-
-    await consumeAnalysisCredits(supabase, usage, answeredCount);
-
-    return NextResponse.json(result);
   } catch {
     return NextResponse.json(
       { code: "login_required", error: "登录状态已失效，请重新登录后再试。" },

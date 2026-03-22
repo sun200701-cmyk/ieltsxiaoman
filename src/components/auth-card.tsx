@@ -173,7 +173,7 @@ export function AuthCard({ initialMode = "login", onSuccess }: AuthCardProps) {
 
   if (user) {
     return (
-      <section className="grid gap-5">
+      <section className="grid w-full gap-5">
         <div className="rounded-[28px] border border-black/8 bg-white p-6">
           <p className="text-sm text-[#667085]">当前登录账号</p>
           <p className="mt-2 text-lg font-medium text-[#101828]">{user.email}</p>

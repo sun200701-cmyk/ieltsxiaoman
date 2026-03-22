@@ -156,9 +156,9 @@ export function HomeExperience() {
 
   return (
     <>
-      <main className="mx-auto flex w-full max-w-[1480px] flex-col px-6 pb-24 pt-6 lg:px-10">
+      <main className="mx-auto flex w-full max-w-[1480px] flex-col px-4 pb-16 pt-4 sm:px-6 sm:pb-20 sm:pt-6 lg:px-10 lg:pb-24">
         <section className="rounded-[38px] border border-black/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(247,241,232,0.93))] shadow-[0_24px_80px_rgba(16,24,40,0.06)]">
-          <div className="flex items-center justify-between border-b border-black/6 px-6 py-4 lg:px-8">
+          <div className="flex items-center justify-between border-b border-black/6 px-4 py-4 sm:px-6 lg:px-8">
             <div className="text-2xl font-semibold tracking-[-0.05em] text-[#101828]">雅小满</div>
             <nav className="hidden items-center gap-8 md:flex">
               {navAnchors.map((item) => (
@@ -173,37 +173,37 @@ export function HomeExperience() {
             </nav>
           </div>
 
-          <div className="grid gap-12 px-6 py-10 lg:grid-cols-[minmax(0,1.08fr)_520px] lg:px-10 lg:py-16">
+          <div className="grid gap-8 px-4 py-6 sm:px-6 sm:py-8 lg:grid-cols-[minmax(0,1.08fr)_520px] lg:gap-12 lg:px-10 lg:py-16">
             <div className="flex flex-col justify-center">
               <div className="inline-flex w-fit items-center gap-2 rounded-full border border-black/8 bg-white px-4 py-2 text-[11px] font-medium uppercase tracking-[0.24em] text-[#7f6c55]">
                 <Sparkles className="h-3.5 w-3.5" />
                 GPT-5.4 定制化口语评分
               </div>
 
-              <h1 className="mt-6 max-w-[920px] text-[3.2rem] font-semibold tracking-[-0.08em] text-[#101828] sm:text-[4.4rem] lg:text-[5.4rem] lg:leading-[0.94]">
+              <h1 className="mt-5 max-w-[920px] text-[2.3rem] font-semibold tracking-[-0.08em] text-[#101828] sm:mt-6 sm:text-[4.4rem] lg:text-[5.4rem] lg:leading-[0.94]">
                 让每一次口语练习，
                 <br />
                 都离目标分更近一点
               </h1>
 
-              <p className="mt-6 max-w-[700px] text-base leading-8 text-[#4f463d] sm:text-lg">
+              <p className="mt-5 max-w-[700px] text-sm leading-7 text-[#4f463d] sm:mt-6 sm:text-lg sm:leading-8">
                 雅小满会先按 IELTS 官方维度为你的口语打分，再给出更高分示例和专属提分计划。
                 你不只是看到结果，还会知道下一步怎么练。
               </p>
 
-              <div className="mt-8 flex flex-wrap gap-3">
+              <div className="mt-7 grid gap-3 sm:mt-8 sm:flex sm:flex-wrap">
                 <a href="#features" className="brand-button">
                   看看它怎么帮你提分
                   <ArrowRight className="h-4 w-4" />
                 </a>
-                <Link href="/speaking-practice" className="ghost-button">
+                <Link href="/speaking-practice" className="ghost-button sm:w-auto">
                   直接进入
                   <CirclePlay className="h-4 w-4" />
                 </Link>
               </div>
             </div>
 
-            <div className="rounded-[34px] border border-black/8 bg-white p-5 shadow-[0_18px_50px_rgba(16,24,40,0.05)]">
+            <div className="rounded-[30px] border border-black/8 bg-white p-4 shadow-[0_18px_50px_rgba(16,24,40,0.05)] sm:rounded-[34px] sm:p-5">
               <div className="flex items-start justify-between gap-4 border-b border-black/6 pb-4">
                 <div>
                   <p className="text-xs uppercase tracking-[0.22em] text-[#8d7557]">口语评分预览</p>
@@ -242,7 +242,7 @@ export function HomeExperience() {
         </section>
 
         <section className="mt-8 border-y border-black/8 py-6">
-          <div className="grid gap-5 text-center md:grid-cols-4">
+          <div className="grid gap-5 text-center sm:grid-cols-2 md:grid-cols-4">
             <div>
               <p className="text-3xl font-semibold tracking-[-0.05em] text-[#101828]">4 项</p>
               <p className="mt-2 text-sm text-[#6b6255]">官方口语维度拆分评分</p>
@@ -262,18 +262,18 @@ export function HomeExperience() {
           </div>
         </section>
 
-        <section id="features" className="pt-24">
-          <div className="mb-16 flex items-center gap-6">
+        <section id="features" className="pt-16 sm:pt-24">
+          <div className="mb-12 flex items-center gap-4 sm:mb-16 sm:gap-6">
             <div className="h-px flex-1 bg-black/8" />
             <span className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7557]">Features</span>
             <div className="h-px flex-1 bg-black/8" />
           </div>
 
-          <div className="grid gap-20">
+          <div className="grid gap-14 sm:gap-20">
             {featureSteps.map((step, index) => (
               <section
                 key={step.num}
-                className={`grid grid-cols-1 gap-10 border-b border-black/8 pb-18 last:border-b-0 last:pb-0 lg:grid-cols-12 lg:gap-16 ${
+                className={`grid grid-cols-1 gap-8 border-b border-black/8 pb-14 last:border-b-0 last:pb-0 sm:gap-10 sm:pb-18 lg:grid-cols-12 lg:gap-16 ${
                   index % 2 === 1 ? "lg:[&>div:first-child]:order-2 lg:[&>div:last-child]:order-1" : ""
                 }`}
               >
@@ -284,7 +284,7 @@ export function HomeExperience() {
                     </span>
 
                     <div className="max-w-md space-y-4">
-                      <h2 className="text-2xl font-semibold tracking-[-0.05em] text-[#101828] sm:text-3xl">
+                      <h2 className="text-xl font-semibold tracking-[-0.05em] text-[#101828] sm:text-3xl">
                         {step.title}
                       </h2>
                       <div className="rounded-[24px] border border-[#8d7557]/12 bg-[linear-gradient(180deg,#f7f1e8,#f4ede2)] px-5 py-4">
@@ -308,7 +308,7 @@ export function HomeExperience() {
                 </div>
 
                 <div className="lg:col-span-7">
-                  <div className="rounded-[34px] border border-black/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(249,244,236,0.96))] p-6 shadow-[0_20px_56px_rgba(16,24,40,0.05)] sm:p-7">
+                  <div className="rounded-[28px] border border-black/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(249,244,236,0.96))] p-4 shadow-[0_20px_56px_rgba(16,24,40,0.05)] sm:rounded-[34px] sm:p-7">
                     {step.demo}
                   </div>
                 </div>
@@ -317,10 +317,10 @@ export function HomeExperience() {
           </div>
         </section>
 
-        <section id="showcase" className="pt-24">
+        <section id="showcase" className="pt-16 sm:pt-24">
           <div className="max-w-3xl">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7557]">Experience</p>
-            <h2 className="mt-4 text-4xl font-semibold tracking-[-0.06em] text-[#101828] sm:text-[3.4rem]">
+            <h2 className="mt-4 text-3xl font-semibold tracking-[-0.06em] text-[#101828] sm:text-[3.4rem]">
               练完之后，你会得到的不只是一个分数
             </h2>
             <p className="mt-5 text-base leading-8 text-[#5b5349]">
@@ -343,7 +343,7 @@ export function HomeExperience() {
             ))}
           </div>
 
-          <div className="mt-8 rounded-[34px] border border-black/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(247,241,232,0.96))] p-6 shadow-[0_18px_56px_rgba(16,24,40,0.04)] sm:p-8">
+          <div className="mt-8 rounded-[28px] border border-black/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(247,241,232,0.96))] p-5 shadow-[0_18px_56px_rgba(16,24,40,0.04)] sm:rounded-[34px] sm:p-8">
             <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
               <div>
                 <p className="text-xs uppercase tracking-[0.22em] text-[#8d7557]">你会体验到什么</p>
@@ -379,11 +379,11 @@ export function HomeExperience() {
 
         <section
           id="entry"
-          className="mt-24 grid gap-6 rounded-[40px] border border-black/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(247,241,232,0.95))] px-6 py-8 shadow-[0_24px_80px_rgba(16,24,40,0.05)] sm:px-8 lg:grid-cols-[0.95fr_1.05fr] lg:px-10"
+          className="mt-16 grid gap-6 rounded-[30px] border border-black/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(247,241,232,0.95))] px-4 py-6 shadow-[0_24px_80px_rgba(16,24,40,0.05)] sm:mt-24 sm:rounded-[40px] sm:px-8 sm:py-8 lg:grid-cols-[0.95fr_1.05fr] lg:px-10"
         >
           <div>
             <p className="text-xs uppercase tracking-[0.24em] text-[#8d7557]">Ready To Start</p>
-            <h2 className="mt-4 max-w-xl text-4xl font-semibold tracking-[-0.07em] text-[#101828] sm:text-[3.4rem]">
+            <h2 className="mt-4 max-w-xl text-3xl font-semibold tracking-[-0.07em] text-[#101828] sm:text-[3.4rem]">
               现在就开始一轮口语练习
             </h2>
             <p className="mt-5 max-w-xl text-base leading-8 text-[#5b5349]">
@@ -391,7 +391,7 @@ export function HomeExperience() {
             </p>
           </div>
 
-          <div className="grid gap-4 rounded-[32px] border border-black/8 bg-white p-5">
+          <div className="grid gap-4 rounded-[28px] border border-black/8 bg-white p-4 sm:rounded-[32px] sm:p-5">
             {user ? (
               <Link
                 href="/speaking-practice"

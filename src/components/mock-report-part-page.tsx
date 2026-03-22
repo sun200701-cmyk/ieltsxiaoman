@@ -19,19 +19,6 @@ function formatScore(score: number) {
   return Number.isInteger(score) ? String(score) : score.toFixed(1);
 }
 
-function derivePromptScore(detailScore: number | undefined, partScore: number | undefined, index: number, part: "Part 1" | "Part 2" | "Part 3") {
-  if (detailScore && detailScore > 0) {
-    return detailScore;
-  }
-
-  if (partScore && partScore > 0) {
-    const offset = part === "Part 2" ? 0 : index % 2 === 0 ? 0 : -0.5;
-    return Math.max(5, Math.round((partScore + offset) * 2) / 2);
-  }
-
-  return part === "Part 3" ? 6 : 6.5;
-}
-
 export function MockReportPartPage({ sessionId, partSlug }: Props) {
   const payload = loadMockReport(sessionId);
   const part = slugToPart[partSlug as keyof typeof slugToPart];
@@ -85,7 +72,7 @@ export function MockReportPartPage({ sessionId, partSlug }: Props) {
                 ))}
               </div>
               <div className="grid gap-3">
-                <p className="text-sm font-medium text-[#101828]">拉低分数的地方</p>
+                <p className="text-sm font-medium text-[#101828]">主要问题</p>
                 {partBreakdown.weaknesses.map((line, index) => (
                   <p key={`${part}-weakness-${index}`} className="rounded-2xl bg-[#fff4f2] px-4 py-3 text-sm leading-7 text-[#b42318]">
                     {line}
@@ -95,12 +82,15 @@ export function MockReportPartPage({ sessionId, partSlug }: Props) {
             </div>
           </div>
         </section>
-      ) : null}
+      ) : (
+        <section className="rounded-[32px] border border-black/8 bg-white p-7 text-sm leading-7 text-[#5b5349] shadow-[0_18px_50px_rgba(16,24,40,0.06)]">
+          这一部分没有生成结构化总结，下面保留逐题结果与转写内容。
+        </section>
+      )}
 
       <div className="grid gap-5">
         {prompts.map((prompt, index) => {
           const detail = payload.result.promptBreakdowns.find((item) => item.id === prompt.id);
-          const score = derivePromptScore(detail?.score, partBreakdown?.score, index, part);
 
           return (
             <Link
@@ -116,12 +106,14 @@ export function MockReportPartPage({ sessionId, partSlug }: Props) {
                 <div className="rounded-[18px] bg-[#f7f3ea] px-4 py-3 text-center">
                   <p className="text-xs uppercase tracking-[0.2em] text-[#8d7557]">Score</p>
                   <p className="mt-2 text-2xl font-semibold leading-none text-[#101828]">
-                    {formatScore(score)}
+                    {detail?.score ? formatScore(detail.score) : "--"}
                   </p>
                 </div>
               </div>
-              <p className="mt-4 text-sm leading-7 text-[#5b5349]">{detail?.summary || "点击查看这道题的分析和标准答案。"}</p>
-              <p className="mt-6 text-sm font-medium text-[#101828]">点击查看这道题的分析、彩色标注和标准答案</p>
+              <p className="mt-4 text-sm leading-7 text-[#5b5349]">
+                {detail?.summary || "这道题没有生成补充点评，点击后可查看原始转写和可用分析内容。"}
+              </p>
+              <p className="mt-6 text-sm font-medium text-[#101828]">查看这道题的详细分析</p>
             </Link>
           );
         })}

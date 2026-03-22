@@ -26,7 +26,7 @@ export function MembershipPanel() {
 
   return (
     <section className="grid gap-4">
-      <div className="flex items-center justify-between border-b border-black/8 pb-5">
+      <div className="flex flex-col gap-4 border-b border-black/8 pb-5 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-2xl font-semibold tracking-[-0.03em] text-[#101828]">会员</h2>
           <p className="mt-2 text-sm text-[#475467]">
@@ -39,7 +39,7 @@ export function MembershipPanel() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
-        <div className="grid gap-4 rounded-[28px] border border-black/8 bg-white p-6">
+        <div className="grid gap-4 rounded-[24px] border border-black/8 bg-white p-4 sm:rounded-[28px] sm:p-6">
           <div className="inline-flex w-fit items-center gap-2 rounded-full bg-[#efe6d7] px-3 py-2 text-sm font-medium text-[#8d7557]">
             <Crown className="h-4 w-4" />
             {currentPlanLabel}
@@ -103,7 +103,7 @@ export function MembershipPanel() {
           </div>
         </div>
 
-        <div className="grid gap-4 rounded-[28px] border border-black/8 bg-[#fafafa] p-6">
+        <div className="grid gap-4 rounded-[24px] border border-black/8 bg-[#fafafa] p-4 sm:rounded-[28px] sm:p-6">
           <div className="inline-flex items-center gap-2 text-sm font-medium text-[#101828]">
             <MessageCircleMore className="h-4 w-4" />
             客服微信

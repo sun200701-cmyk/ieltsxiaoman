@@ -19,11 +19,7 @@ function clampBand(score: number) {
 }
 
 function buildFallbackTranscript(question: DemoQuestion) {
-  return [
-    `I would answer this ${question.part.toLowerCase()} question by focusing on a clear personal example.`,
-    "First, I would explain the main idea in a direct way and then add two supporting details.",
-    "For this topic, I would mention why it matters to me and what I learned from the experience.",
-  ].join(" ");
+  return `[Transcript unavailable: ${question.part} ${question.title}]`;
 }
 
 function buildPolishedVersion(transcript: string) {

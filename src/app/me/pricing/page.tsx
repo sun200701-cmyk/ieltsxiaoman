@@ -71,7 +71,7 @@ const plans = [
 
 export default function PricingPage() {
   return (
-    <main className="min-h-screen bg-[#f7f4ec] px-6 py-8 lg:px-10">
+    <main className="min-h-screen bg-[#f7f4ec] px-4 py-6 sm:px-6 sm:py-8 lg:px-10">
       <div className="mx-auto flex w-full max-w-[1480px] flex-col gap-10">
         <div className="flex items-center justify-between">
           <Link
@@ -85,7 +85,7 @@ export default function PricingPage() {
 
         <div className="text-center">
           <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[#8d7557]">AI Speaking Pricing</p>
-          <h1 className="mt-4 text-4xl font-semibold tracking-[-0.05em] text-[#101828] sm:text-5xl">
+          <h1 className="mt-4 text-3xl font-semibold tracking-[-0.05em] text-[#101828] sm:text-5xl">
             选择适合你的 AI 口语套餐
           </h1>
           <p className="mx-auto mt-4 max-w-3xl text-base leading-8 text-[#5b5349]">
@@ -93,16 +93,16 @@ export default function PricingPage() {
           </p>
         </div>
 
-        <section className="grid gap-6 xl:grid-cols-4">
+        <section className="grid gap-4 sm:gap-6 xl:grid-cols-4">
           {plans.map((plan) => {
             const Icon = plan.icon;
 
             return (
               <article
                 key={plan.title}
-                className={`overflow-hidden rounded-[30px] border border-black/10 ${plan.accent} shadow-[0_18px_40px_rgba(16,24,40,0.06)]`}
+                className={`overflow-hidden rounded-[24px] border border-black/10 ${plan.accent} shadow-[0_18px_40px_rgba(16,24,40,0.06)] sm:rounded-[30px]`}
               >
-                <div className="grid gap-5 p-8">
+                <div className="grid gap-5 p-5 sm:p-8">
                   <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-black/8 bg-[#f8fafc]">
                     <Icon className="h-5 w-5 text-[#101828]" />
                   </div>
@@ -126,7 +126,7 @@ export default function PricingPage() {
                   </a>
                 </div>
 
-                <div className="border-t border-black/8 bg-white/70 px-8 py-6">
+                <div className="border-t border-black/8 bg-white/70 px-5 py-5 sm:px-8 sm:py-6">
                   <ul className="grid gap-3 text-sm leading-7 text-[#344054]">
                     {plan.features.map((feature) => (
                       <li key={feature}>✓ {feature}</li>
@@ -140,7 +140,7 @@ export default function PricingPage() {
 
         <section
           id="contact"
-          className="grid gap-8 rounded-[32px] border border-black/10 bg-white px-6 py-8 shadow-[0_18px_40px_rgba(16,24,40,0.06)] lg:grid-cols-[1.1fr_420px] lg:px-8"
+          className="grid gap-6 rounded-[24px] border border-black/10 bg-white px-4 py-5 shadow-[0_18px_40px_rgba(16,24,40,0.06)] sm:gap-8 sm:rounded-[32px] sm:px-6 sm:py-8 lg:grid-cols-[1.1fr_420px] lg:px-8"
         >
           <div className="grid gap-4">
             <h2 className="text-3xl font-semibold tracking-[-0.04em] text-[#101828]">联系客服开通</h2>

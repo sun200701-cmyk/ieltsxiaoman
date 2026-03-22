@@ -587,12 +587,12 @@ export function PracticeStudio({ question }: PracticeStudioProps) {
   return (
     <>
       <section className="grid gap-8">
-        <div className="grid gap-8 rounded-[36px] border border-black/8 bg-white px-6 py-8 shadow-[0_24px_80px_rgba(16,24,40,0.08)] lg:px-10">
+        <div className="grid gap-6 rounded-[28px] border border-black/8 bg-white px-4 py-5 shadow-[0_24px_80px_rgba(16,24,40,0.08)] sm:gap-8 sm:rounded-[36px] sm:px-6 sm:py-8 lg:px-10">
           <div className="grid gap-5 text-center">
             <p className="text-xs font-semibold uppercase tracking-[0.38em] text-[#8d7557]">
               {question.sectionLabel ?? question.tags[0] ?? "Speaking"}
             </p>
-            <h1 className="text-4xl font-semibold tracking-[-0.06em] text-[#101828] sm:text-5xl lg:text-6xl">
+            <h1 className="text-3xl font-semibold tracking-[-0.06em] text-[#101828] sm:text-5xl lg:text-6xl">
               {question.title}
             </h1>
             <div className="flex flex-wrap items-center justify-center gap-3 text-sm text-[#6f675c]">
@@ -604,19 +604,19 @@ export function PracticeStudio({ question }: PracticeStudioProps) {
             </div>
             {isSequentialPart ? (
               <div className="grid gap-5">
-                <div className="rounded-[24px] bg-white p-6 text-center">
+                <div className="rounded-[24px] bg-white p-4 text-center sm:p-6">
                   <div className="flex flex-wrap items-center justify-center gap-3">
                     <p className="text-sm text-[#8d7557]">Current Answer</p>
                     <span className="rounded-full border border-black/8 px-4 py-2 text-sm text-[#6f675c]">
                       Question {activeQuestionIndex + 1} / {sequentialQuestions.length}
                     </span>
                   </div>
-                  <p className="mt-4 text-2xl leading-10 text-[#101828] sm:text-[2rem]">
+                  <p className="mt-4 text-xl leading-8 text-[#101828] sm:text-[2rem] sm:leading-10">
                     {currentQuestionText}
                   </p>
                 </div>
 
-                <div className="flex flex-wrap justify-center gap-3">
+                <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-wrap sm:justify-center">
                   {sequentialQuestions.map((item, index) => {
                     const active = index === activeQuestionIndex;
                     return (
@@ -638,9 +638,9 @@ export function PracticeStudio({ question }: PracticeStudioProps) {
               </div>
             ) : (
               <div className="grid gap-5 text-left">
-                <p className="text-xl leading-9 text-[#101828]">{question.prompt}</p>
+                <p className="text-lg leading-8 text-[#101828] sm:text-xl sm:leading-9">{question.prompt}</p>
                 {cuePoints.length ? (
-                  <div className="rounded-[24px] bg-white p-5">
+                  <div className="rounded-[24px] bg-white p-4 sm:p-5">
                     <p className="text-sm font-medium uppercase tracking-[0.28em] text-[#8d7557]">You should say</p>
                     <div className="mt-4 grid gap-3 text-base leading-8 text-[#344054]">
                       {cuePoints.map((point) => (
@@ -654,12 +654,12 @@ export function PracticeStudio({ question }: PracticeStudioProps) {
           </div>
 
           <div className="grid gap-4">
-            <div className="flex flex-wrap items-center justify-center gap-4">
+            <div className="grid gap-3 sm:flex sm:flex-wrap sm:items-center sm:justify-center sm:gap-4">
               <button
                 type="button"
                 onClick={handlePreviousQuestion}
                 disabled={!hasPreviousQuestionInSet}
-                className="inline-flex min-h-14 items-center justify-center rounded-full border border-black/8 bg-white px-8 text-base font-medium text-[#101828] transition hover:border-black/12 hover:bg-[#f6f0e5] disabled:cursor-not-allowed disabled:text-[#98a2b3]"
+                className="inline-flex min-h-14 items-center justify-center rounded-full border border-black/8 bg-white px-6 text-base font-medium text-[#101828] transition hover:border-black/12 hover:bg-[#f6f0e5] disabled:cursor-not-allowed disabled:text-[#98a2b3] sm:px-8"
               >
                 Previous Question
               </button>
@@ -667,7 +667,7 @@ export function PracticeStudio({ question }: PracticeStudioProps) {
               <button
                 type="button"
                 onClick={handleReanswer}
-                className="inline-flex min-h-14 items-center justify-center rounded-full border border-black/8 bg-white px-8 text-base font-medium text-[#101828] transition hover:border-black/12 hover:bg-[#f6f0e5]"
+                className="inline-flex min-h-14 items-center justify-center rounded-full border border-black/8 bg-white px-6 text-base font-medium text-[#101828] transition hover:border-black/12 hover:bg-[#f6f0e5] sm:px-8"
               >
                 Re-Answer
               </button>
@@ -676,7 +676,7 @@ export function PracticeStudio({ question }: PracticeStudioProps) {
                 <button
                   type="button"
                   onClick={stopRecording}
-                  className="inline-flex min-h-14 items-center justify-center gap-2 rounded-full bg-[#101828] px-8 text-base font-medium text-white transition hover:bg-[#1b2333]"
+                  className="inline-flex min-h-14 items-center justify-center gap-2 rounded-full bg-[#101828] px-6 text-base font-medium text-white transition hover:bg-[#1b2333] sm:px-8"
                 >
                   <PauseCircle className="h-5 w-5" />
                   Stop Recording
@@ -686,7 +686,7 @@ export function PracticeStudio({ question }: PracticeStudioProps) {
                   type="button"
                   onClick={startRecording}
                   disabled={recorderState === "submitting"}
-                  className="inline-flex min-h-14 items-center justify-center gap-2 rounded-full bg-[#3f67f5] px-8 text-base font-medium text-white transition hover:bg-[#3556d2] disabled:cursor-not-allowed disabled:bg-[#9db0ff]"
+                  className="inline-flex min-h-14 items-center justify-center gap-2 rounded-full bg-[#3f67f5] px-6 text-base font-medium text-white transition hover:bg-[#3556d2] disabled:cursor-not-allowed disabled:bg-[#9db0ff] sm:px-8"
                 >
                   <Mic className="h-5 w-5" />
                   Start Answering
@@ -697,7 +697,7 @@ export function PracticeStudio({ question }: PracticeStudioProps) {
                 type="button"
                 onClick={submitAssessment}
                 disabled={!audioBlob || recorderState === "submitting"}
-                className="inline-flex min-h-14 items-center justify-center gap-2 rounded-full border border-black/8 bg-white px-8 text-base font-medium text-[#101828] transition hover:border-black/12 hover:bg-[#f6f0e5] disabled:cursor-not-allowed disabled:text-[#98a2b3]"
+                className="inline-flex min-h-14 items-center justify-center gap-2 rounded-full border border-black/8 bg-white px-6 text-base font-medium text-[#101828] transition hover:border-black/12 hover:bg-[#f6f0e5] disabled:cursor-not-allowed disabled:text-[#98a2b3] sm:px-8"
               >
                 {recorderState === "submitting" ? (
                   <>
@@ -715,13 +715,13 @@ export function PracticeStudio({ question }: PracticeStudioProps) {
               <button
                 type="button"
                 onClick={handleNextQuestion}
-                className="inline-flex min-h-14 items-center justify-center rounded-full bg-[#101828] px-8 text-base font-medium text-white transition hover:bg-[#1b2333]"
+                className="inline-flex min-h-14 items-center justify-center rounded-full bg-[#101828] px-6 text-base font-medium text-white transition hover:bg-[#1b2333] sm:px-8"
               >
                 {nextButtonLabel}
               </button>
             </div>
 
-            <div className="grid gap-2 text-sm text-[#6f675c]">
+            <div className="grid gap-2 text-sm leading-6 text-[#6f675c]">
               <p>{status}</p>
               {recorderState === "recording" ? (
                 <p className="font-medium text-[#b42318]">Recording Time: {liveDurationLabel}</p>
@@ -742,7 +742,7 @@ export function PracticeStudio({ question }: PracticeStudioProps) {
         {result ? (
           <section className="grid gap-8">
             <div className="grid gap-5 lg:grid-cols-[320px_1fr]">
-              <div className="rounded-[32px] bg-[#101828] p-8 text-white shadow-[0_24px_60px_rgba(16,24,40,0.18)]">
+              <div className="rounded-[28px] bg-[#101828] p-6 text-white shadow-[0_24px_60px_rgba(16,24,40,0.18)] sm:rounded-[32px] sm:p-8">
                 <p className="text-[5rem] font-semibold leading-none tracking-[-0.08em]">
                   {formatScore(result.overallBand)}
                 </p>
@@ -752,8 +752,8 @@ export function PracticeStudio({ question }: PracticeStudioProps) {
                 <p className="mt-2 text-sm text-white/72">{scoreLabelMap.overall.zh}</p>
               </div>
 
-              <div className="rounded-[32px] border border-black/8 bg-white p-6 shadow-[0_18px_50px_rgba(16,24,40,0.06)]">
-                <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
+              <div className="rounded-[28px] border border-black/8 bg-white p-5 shadow-[0_18px_50px_rgba(16,24,40,0.06)] sm:rounded-[32px] sm:p-6">
+                <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
                   {scoreItems.map((item) => (
                     <div key={item.label} className="grid gap-3">
                       <p className="text-[3rem] font-semibold leading-none tracking-[-0.06em] text-[#101828]">
@@ -775,7 +775,7 @@ export function PracticeStudio({ question }: PracticeStudioProps) {
               </div>
             </div>
 
-            <div className="rounded-[32px] border border-black/8 bg-white p-7 shadow-[0_18px_50px_rgba(16,24,40,0.06)]">
+            <div className="rounded-[28px] border border-black/8 bg-white p-5 shadow-[0_18px_50px_rgba(16,24,40,0.06)] sm:rounded-[32px] sm:p-7">
               <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[#8d7557]">Next Band Gap</p>
               <h2 className="mt-3 text-2xl font-semibold tracking-[-0.04em] text-[#101828]">
                 距离下一个分数段，还差什么
@@ -783,7 +783,7 @@ export function PracticeStudio({ question }: PracticeStudioProps) {
               <p className="mt-4 max-w-4xl text-base leading-8 text-[#344054]">{result.targetBandGap}</p>
             </div>
 
-            <div className="rounded-[32px] border border-black/8 bg-white p-7 shadow-[0_18px_50px_rgba(16,24,40,0.06)]">
+            <div className="rounded-[28px] border border-black/8 bg-white p-5 shadow-[0_18px_50px_rgba(16,24,40,0.06)] sm:rounded-[32px] sm:p-7">
               <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                 <div>
                   <h2 className="text-2xl font-semibold tracking-[-0.04em] text-[#101828]">Detailed Analysis</h2>
@@ -804,13 +804,13 @@ export function PracticeStudio({ question }: PracticeStudioProps) {
                 </div>
               </div>
 
-              <div className="mt-6 text-lg leading-[2.2] text-[#101828]">
+              <div className="mt-6 text-base leading-9 text-[#101828] sm:text-lg sm:leading-[2.2]">
                 {renderHighlightedTranscript(result.transcript, result.masteredPhrases)}
               </div>
             </div>
 
             <div className="grid gap-6 xl:grid-cols-[1fr_420px]">
-              <div className="rounded-[32px] border border-black/8 bg-white p-7 shadow-[0_18px_50px_rgba(16,24,40,0.06)]">
+              <div className="rounded-[28px] border border-black/8 bg-white p-5 shadow-[0_18px_50px_rgba(16,24,40,0.06)] sm:rounded-[32px] sm:p-7">
                 <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[#8d7557]">Mastered Phrases</p>
                 <div className="mt-5 flex flex-wrap gap-3">
                   {result.masteredPhrases.map((phrase) => (
@@ -824,14 +824,14 @@ export function PracticeStudio({ question }: PracticeStudioProps) {
                 </div>
               </div>
 
-              <div className="rounded-[32px] border border-black/8 bg-[#f7f9fc] p-7 shadow-[0_18px_50px_rgba(16,24,40,0.05)]">
+              <div className="rounded-[28px] border border-black/8 bg-[#f7f9fc] p-5 shadow-[0_18px_50px_rgba(16,24,40,0.05)] sm:rounded-[32px] sm:p-7">
                 <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[#8d7557]">点评</p>
-                <p className="mt-5 text-lg leading-10 text-[#1d2939]">{result.examinerFeedback}</p>
+                <p className="mt-5 text-base leading-8 text-[#1d2939] sm:text-lg sm:leading-10">{result.examinerFeedback}</p>
               </div>
             </div>
 
             <div className="grid gap-6 xl:grid-cols-3">
-              <div className="rounded-[32px] border border-black/8 bg-white p-7 shadow-[0_18px_50px_rgba(16,24,40,0.06)]">
+              <div className="rounded-[28px] border border-black/8 bg-white p-5 shadow-[0_18px_50px_rgba(16,24,40,0.06)] sm:rounded-[32px] sm:p-7">
                 <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[#8d7557]">7-Day Focus</p>
                 <h3 className="mt-3 text-xl font-semibold text-[#101828]">未来 7 天最该练什么</h3>
                 <div className="mt-5 grid gap-3">
@@ -843,7 +843,7 @@ export function PracticeStudio({ question }: PracticeStudioProps) {
                 </div>
               </div>
 
-              <div className="rounded-[32px] border border-black/8 bg-white p-7 shadow-[0_18px_50px_rgba(16,24,40,0.06)]">
+              <div className="rounded-[28px] border border-black/8 bg-white p-5 shadow-[0_18px_50px_rgba(16,24,40,0.06)] sm:rounded-[32px] sm:p-7">
                 <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[#8d7557]">15 Minutes</p>
                 <h3 className="mt-3 text-xl font-semibold text-[#101828]">每天练习 15 分钟做什么</h3>
                 <div className="mt-5 grid gap-3">
@@ -855,7 +855,7 @@ export function PracticeStudio({ question }: PracticeStudioProps) {
                 </div>
               </div>
 
-              <div className="rounded-[32px] border border-black/8 bg-white p-7 shadow-[0_18px_50px_rgba(16,24,40,0.06)]">
+              <div className="rounded-[28px] border border-black/8 bg-white p-5 shadow-[0_18px_50px_rgba(16,24,40,0.06)] sm:rounded-[32px] sm:p-7">
                 <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[#8d7557]">Score Killers</p>
                 <h3 className="mt-3 text-xl font-semibold text-[#101828]">最影响分数的错误</h3>
                 <div className="mt-5 grid gap-3">
@@ -868,10 +868,10 @@ export function PracticeStudio({ question }: PracticeStudioProps) {
               </div>
             </div>
 
-            <div className="rounded-[32px] border border-black/8 bg-white p-7 shadow-[0_18px_50px_rgba(16,24,40,0.06)]">
+            <div className="rounded-[28px] border border-black/8 bg-white p-5 shadow-[0_18px_50px_rgba(16,24,40,0.06)] sm:rounded-[32px] sm:p-7">
               <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[#8d7557]">Sprint Plan</p>
               <h2 className="mt-3 text-2xl font-semibold tracking-[-0.04em] text-[#101828]">7 天冲刺计划</h2>
-              <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 {result.sevenDaySprintPlan.map((item, index) => (
                   <div
                     key={`${item}-${index}`}
@@ -887,7 +887,7 @@ export function PracticeStudio({ question }: PracticeStudioProps) {
             </div>
 
             {polishedVersion ? (
-              <div className="rounded-[32px] border border-black/8 bg-white p-7 shadow-[0_18px_50px_rgba(16,24,40,0.06)]">
+              <div className="rounded-[28px] border border-black/8 bg-white p-5 shadow-[0_18px_50px_rgba(16,24,40,0.06)] sm:rounded-[32px] sm:p-7">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[#8d7557]">Band 8 Polished Version</p>
                   <TextToSpeechButton text={polishedVersion} />
@@ -895,17 +895,17 @@ export function PracticeStudio({ question }: PracticeStudioProps) {
                 <p className="mt-4 text-sm leading-7 text-[#667085]">
                   This version keeps your original meaning, but upgrades the wording, sentence flow, and overall delivery to a stronger Band 8 level.
                 </p>
-                <p className="mt-6 text-lg leading-10 text-[#101828]">{polishedVersion}</p>
+                <p className="mt-6 text-base leading-8 text-[#101828] sm:text-lg sm:leading-10">{polishedVersion}</p>
               </div>
             ) : null}
 
             {referenceAnswer ? (
-              <div className="rounded-[32px] border border-black/8 bg-white p-7 shadow-[0_18px_50px_rgba(16,24,40,0.06)]">
+              <div className="rounded-[28px] border border-black/8 bg-white p-5 shadow-[0_18px_50px_rgba(16,24,40,0.06)] sm:rounded-[32px] sm:p-7">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[#8d7557]">Reference Answer</p>
                   <TextToSpeechButton text={referenceAnswer} />
                 </div>
-                <p className="mt-6 text-lg leading-10 text-[#101828]">{referenceAnswer}</p>
+                <p className="mt-6 text-base leading-8 text-[#101828] sm:text-lg sm:leading-10">{referenceAnswer}</p>
               </div>
             ) : null}
           </section>
@@ -914,12 +914,12 @@ export function PracticeStudio({ question }: PracticeStudioProps) {
 
       {showLoginPrompt ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#101828]/35 px-4">
-          <div className="w-full max-w-md rounded-[28px] bg-white p-7 shadow-[0_24px_80px_rgba(16,24,40,0.18)]">
+          <div className="w-full max-w-md rounded-[24px] bg-white p-5 shadow-[0_24px_80px_rgba(16,24,40,0.18)] sm:rounded-[28px] sm:p-7">
             <h3 className="text-2xl font-semibold text-[#101828]">登录后再分析</h3>
             <p className="mt-3 text-sm leading-7 text-[#475467]">
               你现在可以继续录音，但真实语音转文字和 AI 评分只对已登录用户开放。
             </p>
-            <div className="mt-6 flex gap-3">
+            <div className="mt-6 grid gap-3 sm:flex">
               <button
                 type="button"
                 onClick={() => setShowLoginPrompt(false)}
@@ -940,12 +940,12 @@ export function PracticeStudio({ question }: PracticeStudioProps) {
 
       {showUpgradePrompt ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#101828]/35 px-4">
-          <div className="w-full max-w-lg rounded-[28px] bg-white p-7 shadow-[0_24px_80px_rgba(16,24,40,0.18)]">
+          <div className="w-full max-w-lg rounded-[24px] bg-white p-5 shadow-[0_24px_80px_rgba(16,24,40,0.18)] sm:rounded-[28px] sm:p-7">
             <h3 className="text-2xl font-semibold text-[#101828]">当前次数已用完</h3>
             <p className="mt-3 text-sm leading-7 text-[#475467]">
               你可以前往 AI 口语定价页面查看 Free、Pro、Ultra 和加量包方案，再扫码联系客服开通。
             </p>
-            <div className="mt-6 flex gap-3">
+            <div className="mt-6 grid gap-3 sm:flex">
               <button
                 type="button"
                 onClick={() => setShowUpgradePrompt(false)}

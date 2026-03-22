@@ -1,10 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { TextToSpeechButton } from "@/components/text-to-speech-button";
 
-import { loadMockReport } from "@/lib/mock-report-storage";
+import { TextToSpeechButton } from "@/components/text-to-speech-button";
 import { getMockPromptReferenceAnswer } from "@/lib/mock-reference-answer";
+import { loadMockReport } from "@/lib/mock-report-storage";
 
 type Props = {
   sessionId: string;
@@ -215,38 +215,14 @@ function renderHighlightedTranscript(transcript: string, masteredPhrases: string
 
 function buildFallbackDetail(transcript: string) {
   const cleaned = transcript.trim();
-  const wordCount = cleaned ? cleaned.split(/\s+/).length : 0;
-  const polishedVersion =
-    cleaned.length > 0
-      ? cleaned
-          .replace(/\bi think\b/gi, "I would say")
-          .replace(/\breally\b/gi, "particularly")
-          .replace(/\bvery\b/gi, "quite")
-          .replace(/\bgood\b/gi, "beneficial")
-          .replace(/\bbad\b/gi, "less effective")
-      : "A polished version is not available yet because the transcript is empty.";
-
   return {
-    summary:
-      wordCount >= 35
-        ? "这道题已经完成了基本展开，但表达层次和高分词句还可以继续加强。"
-        : "这道题目前回答偏短，切题基础有了，但展开和支撑明显不够。",
-    score: wordCount >= 45 ? 6.5 : wordCount >= 25 ? 6 : 5.5,
-    strengths: transcript
-      ? [
-          "回答内容已成功保存，说明这道题的基本作答链路是完整的。",
-          wordCount >= 30 ? "整体回答已经有一定长度，说明你能够持续输出观点。" : "回答没有完全偏题，核心信息仍然能够被理解。",
-        ]
-      : ["当前没有可用转写内容。"],
-    weaknesses: transcript
-      ? [
-          "这道题的高质量表达和细节支撑还不够，导致分数上限受限。",
-          "建议继续检查语法准确度、连接词使用和论证展开。",
-        ]
-      : ["由于缺少转写，暂时无法给出更细的逐题问题定位。"],
-    conclusion: "先把回答扩展到“观点 + 原因 + 例子”的完整结构，再做表达升级，效果会更明显。",
-    masteredPhrases: cleaned ? [] : ["for example", "in my opinion"],
-    polishedVersion,
+    summary: cleaned ? "这道题暂时没有生成结构化点评，下面展示保留下来的原始转写内容。" : "这道题没有可用转写，因此没有生成逐题点评。",
+    score: 0,
+    strengths: cleaned ? ["已保留原始转写，可据此继续人工复盘。"] : [],
+    weaknesses: cleaned ? ["系统未生成可用的逐题分析，请稍后重新生成完整报告。"] : ["当前没有可用 transcript，无法判断具体问题。"],
+    conclusion: cleaned ? "建议稍后重新生成完整报告，避免基于不完整分析做判断。" : "请优先重新提交录音并完成转写。",
+    masteredPhrases: [],
+    polishedVersion: "",
   };
 }
 
@@ -285,7 +261,7 @@ export function MockReportPromptPage({ sessionId, partSlug, promptId }: Props) {
     return (
       <main className="mx-auto flex min-h-screen w-full max-w-[1480px] items-center justify-center px-6 py-10 lg:px-10">
         <div className="rounded-[32px] border border-black/8 bg-white p-10 text-center shadow-[0_24px_80px_rgba(16,24,40,0.08)]">
-          <h1 className="text-3xl font-semibold text-[#101828]">该题目的详情找不到</h1>
+          <h1 className="text-3xl font-semibold text-[#101828]">这道题的详情找不到了</h1>
           <Link href={`/mock/full/report/${sessionId}/${partSlug}`} className="brand-button mt-6 inline-flex min-w-[220px]">
             返回这一部分
           </Link>
@@ -295,24 +271,25 @@ export function MockReportPromptPage({ sessionId, partSlug, promptId }: Props) {
   }
 
   const referenceAnswer = getMockPromptReferenceAnswer(prompt);
+  const fallbackDetail = buildFallbackDetail(transcript.transcript);
   const resolvedDetail = detail
     ? {
         ...detail,
-        score: detail.score > 0 ? detail.score : buildFallbackDetail(transcript.transcript).score,
-        masteredPhrases: detail.masteredPhrases?.length ? detail.masteredPhrases : buildFallbackDetail(transcript.transcript).masteredPhrases,
-        polishedVersion: detail.polishedVersion || buildFallbackDetail(transcript.transcript).polishedVersion,
-        summary: detail.summary || buildFallbackDetail(transcript.transcript).summary,
-        strengths: detail.strengths?.length ? detail.strengths : buildFallbackDetail(transcript.transcript).strengths,
-        weaknesses: detail.weaknesses?.length ? detail.weaknesses : buildFallbackDetail(transcript.transcript).weaknesses,
-        conclusion: detail.conclusion || buildFallbackDetail(transcript.transcript).conclusion,
+        score: detail.score > 0 ? detail.score : fallbackDetail.score,
+        masteredPhrases: detail.masteredPhrases?.length ? detail.masteredPhrases : fallbackDetail.masteredPhrases,
+        polishedVersion: detail.polishedVersion || fallbackDetail.polishedVersion,
+        summary: detail.summary || fallbackDetail.summary,
+        strengths: detail.strengths?.length ? detail.strengths : fallbackDetail.strengths,
+        weaknesses: detail.weaknesses?.length ? detail.weaknesses : fallbackDetail.weaknesses,
+        conclusion: detail.conclusion || fallbackDetail.conclusion,
       }
     : {
-    id: prompt.id,
-    part: prompt.part,
-    topic: prompt.topic,
-    prompt: prompt.prompt,
-    ...buildFallbackDetail(transcript.transcript),
-  };
+        id: prompt.id,
+        part: prompt.part,
+        topic: prompt.topic,
+        prompt: prompt.prompt,
+        ...fallbackDetail,
+      };
 
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-[1480px] flex-col gap-8 px-6 py-10 lg:px-10">
@@ -332,19 +309,21 @@ export function MockReportPromptPage({ sessionId, partSlug, promptId }: Props) {
       <section className="grid gap-6 lg:grid-cols-[260px_1fr]">
         <div className="rounded-[32px] bg-[#101828] p-8 text-white shadow-[0_18px_50px_rgba(16,24,40,0.12)]">
           <p className="text-xs uppercase tracking-[0.3em] text-white/72">Question Score</p>
-          <p className="mt-5 text-[4.5rem] font-semibold leading-none tracking-[-0.08em]">{formatScore(resolvedDetail.score)}</p>
+          <p className="mt-5 text-[4.5rem] font-semibold leading-none tracking-[-0.08em]">
+            {resolvedDetail.score > 0 ? formatScore(resolvedDetail.score) : "--"}
+          </p>
         </div>
 
         <div className="rounded-[32px] border border-black/8 bg-white p-7 shadow-[0_18px_50px_rgba(16,24,40,0.06)]">
           <div className="flex flex-wrap gap-3 text-xs">
-            <span className="rounded-full bg-[#e8f8ee] px-3 py-1.5 text-[#18794e]">绿色：亮点表达</span>
-            <span className="rounded-full bg-[#fff4e8] px-3 py-1.5 text-[#b54708]">橙色：较好搭配</span>
-            <span className="rounded-full bg-[#eef4ff] px-3 py-1.5 text-[#175cd3]">蓝色：连接结构</span>
-            <span className="rounded-full bg-[#fff1f1] px-3 py-1.5 text-[#b42318]">红色：语法或搭配问题</span>
+            <span className="rounded-full bg-[#e8f8ee] px-3 py-1.5 text-[#18794e]">绿色: 已识别亮点表达</span>
+            <span className="rounded-full bg-[#fff4e8] px-3 py-1.5 text-[#b54708]">橙色: 常见搭配</span>
+            <span className="rounded-full bg-[#eef4ff] px-3 py-1.5 text-[#175cd3]">蓝色: 连接表达</span>
+            <span className="rounded-full bg-[#fff1f1] px-3 py-1.5 text-[#b42318]">红色: 疑似语法或搭配问题</span>
           </div>
-          <p className="mt-6 text-xs uppercase tracking-[0.24em] text-[#8d7557]">Detailed Analysis</p>
+          <p className="mt-6 text-xs uppercase tracking-[0.24em] text-[#8d7557]">Transcript</p>
           <p className="mt-4 text-lg leading-10 text-[#101828]">
-            {renderHighlightedTranscript(transcript.transcript, resolvedDetail.masteredPhrases)}
+            {transcript.transcript ? renderHighlightedTranscript(transcript.transcript, resolvedDetail.masteredPhrases) : "No transcript available."}
           </p>
         </div>
       </section>
@@ -358,22 +337,22 @@ export function MockReportPromptPage({ sessionId, partSlug, promptId }: Props) {
             <div>
               <p className="text-sm font-medium text-[#101828]">表现好的地方</p>
               <div className="mt-3 grid gap-3">
-                {resolvedDetail.strengths.map((line, index) => (
+                {resolvedDetail.strengths.length ? resolvedDetail.strengths.map((line, index) => (
                   <p key={`${resolvedDetail.id}-strength-${index}`} className="rounded-2xl bg-[#e8f8ee] px-4 py-3 text-sm leading-7 text-[#18794e]">
                     {line}
                   </p>
-                ))}
+                )) : <p className="text-sm leading-7 text-[#667085]">暂无可展示的亮点点评。</p>}
               </div>
             </div>
 
             <div>
-              <p className="text-sm font-medium text-[#101828]">拉低分数的地方</p>
+              <p className="text-sm font-medium text-[#101828]">主要问题</p>
               <div className="mt-3 grid gap-3">
-                {resolvedDetail.weaknesses.map((line, index) => (
+                {resolvedDetail.weaknesses.length ? resolvedDetail.weaknesses.map((line, index) => (
                   <p key={`${resolvedDetail.id}-weakness-${index}`} className="rounded-2xl bg-[#fff4f2] px-4 py-3 text-sm leading-7 text-[#b42318]">
                     {line}
                   </p>
-                ))}
+                )) : <p className="text-sm leading-7 text-[#667085]">暂无可展示的问题定位。</p>}
               </div>
             </div>
 
@@ -393,10 +372,10 @@ export function MockReportPromptPage({ sessionId, partSlug, promptId }: Props) {
               <TextToSpeechButton text={resolvedDetail.polishedVersion || ""} />
             </div>
             <p className="mt-4 text-sm leading-7 text-[#667085]">
-              This version keeps your original meaning, but upgrades the wording, sentence flow, and overall delivery to a stronger Band 8 level.
+              这里只展示真实生成出的优化答案；如果本次没有生成，就保持为空，不再补默认内容。
             </p>
             <div className="mt-5 rounded-2xl bg-[#eef4ff] p-5">
-              <p className="mt-0 text-sm leading-7 text-[#344054]">{resolvedDetail.polishedVersion || "Polished version is not available yet."}</p>
+              <p className="mt-0 text-sm leading-7 text-[#344054]">{resolvedDetail.polishedVersion || "Polished version is not available."}</p>
             </div>
           </div>
 

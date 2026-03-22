@@ -18,10 +18,10 @@ function MePageContent() {
   }
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-[1400px] flex-col px-6 py-10 lg:px-10">
+    <main className="mx-auto flex min-h-screen w-full max-w-[1400px] flex-col px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-10">
       <div className="border-b border-black/8 pb-8">
         <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[#8d7557]">My Space</p>
-        <h1 className="mt-4 text-4xl font-semibold tracking-[-0.05em] text-[#101828]">我的</h1>
+        <h1 className="mt-4 text-3xl font-semibold tracking-[-0.05em] text-[#101828] sm:text-4xl">我的</h1>
         <p className="mt-4 max-w-2xl text-base leading-8 text-[#5b5349]">查看当前账号、会员状态和剩余可用次数。</p>
       </div>
 
