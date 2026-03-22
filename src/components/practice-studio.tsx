@@ -245,7 +245,7 @@ export function PracticeStudio({ question }: PracticeStudioProps) {
   const recorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<BlobPart[]>([]);
-  const recordingTimerRef = useRef<ReturnType<typeof window.setInterval> | null>(null);
+  const recordingTimerRef = useRef<number | null>(null);
 
   const [recorderState, setRecorderState] = useState<RecorderState>("idle");
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
