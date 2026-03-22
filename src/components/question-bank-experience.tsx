@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { ChevronLeft } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { questions } from "@/lib/questions";
@@ -33,6 +34,14 @@ export function QuestionBankExperience() {
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-[1480px] flex-col px-6 py-10 lg:px-10">
       <section className="mx-auto flex w-full max-w-[1380px] flex-col">
+        <Link
+          href="/speaking-practice"
+          className="mb-8 inline-flex w-fit items-center gap-2 rounded-full border border-black/8 bg-[#fffdf8] px-4 py-2 text-sm text-[#6f675c] transition hover:border-black/12 hover:text-[#101828]"
+        >
+          <ChevronLeft className="h-4 w-4" />
+          返回选择模考方式
+        </Link>
+
         <div className="flex flex-col gap-4 text-center">
           <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[#8d7557]">Question Bank Practice</p>
           <h1 className="text-4xl font-semibold tracking-[-0.06em] text-[#101828] sm:text-5xl lg:text-[4.8rem]">

@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { LoaderCircle, Mic, PauseCircle, Play } from "lucide-react";
 
 import { useAuth } from "@/components/auth-provider";
+import { TextToSpeechButton } from "@/components/text-to-speech-button";
 import { orderedQuestions } from "@/lib/questions";
 import { part2ReferenceAnswersById } from "@/lib/reference-answers";
 import { requiredPart1AnswersByQuestionText } from "@/lib/reference-required-part1-answers";
@@ -887,7 +888,10 @@ export function PracticeStudio({ question }: PracticeStudioProps) {
 
             {polishedVersion ? (
               <div className="rounded-[32px] border border-black/8 bg-white p-7 shadow-[0_18px_50px_rgba(16,24,40,0.06)]">
-                <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[#8d7557]">Band 8 Polished Version</p>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[#8d7557]">Band 8 Polished Version</p>
+                  <TextToSpeechButton text={polishedVersion} />
+                </div>
                 <p className="mt-4 text-sm leading-7 text-[#667085]">
                   This version keeps your original meaning, but upgrades the wording, sentence flow, and overall delivery to a stronger Band 8 level.
                 </p>
@@ -897,7 +901,10 @@ export function PracticeStudio({ question }: PracticeStudioProps) {
 
             {referenceAnswer ? (
               <div className="rounded-[32px] border border-black/8 bg-white p-7 shadow-[0_18px_50px_rgba(16,24,40,0.06)]">
-                <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[#8d7557]">Reference Answer</p>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[#8d7557]">Reference Answer</p>
+                  <TextToSpeechButton text={referenceAnswer} />
+                </div>
                 <p className="mt-6 text-lg leading-10 text-[#101828]">{referenceAnswer}</p>
               </div>
             ) : null}

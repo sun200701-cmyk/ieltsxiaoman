@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { TextToSpeechButton } from "@/components/text-to-speech-button";
 
 import { loadMockReport } from "@/lib/mock-report-storage";
 import { getMockPromptReferenceAnswer } from "@/lib/mock-reference-answer";
@@ -387,7 +388,10 @@ export function MockReportPromptPage({ sessionId, partSlug, promptId }: Props) {
 
         <div className="grid gap-6">
           <div className="rounded-[32px] border border-black/8 bg-white p-7 shadow-[0_18px_50px_rgba(16,24,40,0.06)]">
-            <p className="text-xs uppercase tracking-[0.24em] text-[#8d7557]">Band 8 Polished Version</p>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-xs uppercase tracking-[0.24em] text-[#8d7557]">Band 8 Polished Version</p>
+              <TextToSpeechButton text={resolvedDetail.polishedVersion || ""} />
+            </div>
             <p className="mt-4 text-sm leading-7 text-[#667085]">
               This version keeps your original meaning, but upgrades the wording, sentence flow, and overall delivery to a stronger Band 8 level.
             </p>
@@ -397,9 +401,12 @@ export function MockReportPromptPage({ sessionId, partSlug, promptId }: Props) {
           </div>
 
           <div className="rounded-[32px] border border-black/8 bg-white p-7 shadow-[0_18px_50px_rgba(16,24,40,0.06)]">
-            <p className="text-xs uppercase tracking-[0.24em] text-[#8d7557]">标准答案</p>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-xs uppercase tracking-[0.24em] text-[#8d7557]">Reference Answer</p>
+              <TextToSpeechButton text={referenceAnswer} />
+            </div>
             <p className="mt-4 text-base leading-8 text-[#101828]">
-              {referenceAnswer || "这道题当前还没有可直接展示的标准答案，后续可以继续补充。"}
+              {referenceAnswer || "Reference answer is not available yet."}
             </p>
           </div>
         </div>

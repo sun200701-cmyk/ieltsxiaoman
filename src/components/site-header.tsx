@@ -15,12 +15,17 @@ type NavItem = {
 const navItems: NavItem[] = [
   {
     href: "/",
+    label: "\u9996\u9875",
+    active: (pathname) => pathname === "/",
+  },
+  {
+    href: "/speaking-practice",
     label: "\u53e3\u8bed\u7ec3\u4e60",
     active: (pathname) =>
-      pathname === "/" ||
+      pathname.startsWith("/speaking-practice") ||
       pathname.startsWith("/practice") ||
-      pathname.startsWith("/mock") ||
-      pathname.startsWith("/question-bank"),
+      pathname.startsWith("/question-bank") ||
+      pathname.startsWith("/mock"),
   },
   {
     href: "/courses",
@@ -54,7 +59,7 @@ export function SiteHeader() {
   const isMeActive = pathname === "/me";
 
   return (
-    <header className="sticky top-0 z-40 border-b border-black/8 bg-[rgba(251,248,241,0.92)] backdrop-blur">
+    <header className="sticky top-0 z-40 border-b border-black/8 bg-[rgba(251,248,241,0.9)] backdrop-blur">
       <div className="mx-auto flex w-full max-w-[1480px] items-center px-6 py-4 lg:px-10">
         <Link href="/" className="text-[2rem] font-semibold tracking-[-0.05em] text-[#101828]">
           {"\u96c5\u5c0f\u6ee1"}

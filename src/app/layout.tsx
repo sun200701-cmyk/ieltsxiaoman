@@ -17,8 +17,8 @@ const mono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "XiaoMan Speak",
-  description: "A polished IELTS speaking demo with recording and AI scoring.",
+  title: "雅小满",
+  description: "雅小满用 GPT-5.4 为学生提供 IELTS 口语定制化评分、高分示例与提分计划。",
 };
 
 export default function RootLayout({

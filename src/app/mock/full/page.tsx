@@ -8,11 +8,11 @@ export default function FullMockTestPage() {
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-[1480px] flex-col gap-6 px-6 py-6 lg:px-10">
       <Link
-        href="/"
+        href="/speaking-practice"
         className="inline-flex w-fit items-center gap-2 rounded-full border border-black/8 bg-[#fffdf8] px-4 py-2 text-sm text-[#6f675c] transition hover:border-black/12 hover:text-[#101828]"
       >
         <ChevronLeft className="h-4 w-4" />
-        返回练习入口
+        返回选择模考方式
       </Link>
 
       <Suspense
