@@ -7,7 +7,14 @@ import { LoaderCircle, Mic, PauseCircle, Play, Volume2 } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
 import { deletePendingMockSubmission, loadPendingMockSubmission, saveMockReport, savePendingMockSubmission } from "@/lib/mock-report-storage";
 import { createFullMockTestSession } from "@/lib/mock-test";
-import type { MockAssessmentApiResponse, MockGenerationPhase, MockPrompt, MockPromptTranscript, MockTestSession } from "@/lib/types";
+import type {
+  MockAssessmentApiResponse,
+  MockGenerationPhase,
+  MockPrompt,
+  MockPromptTranscript,
+  MockTestSession,
+  MockTranscriptionApiResponse,
+} from "@/lib/types";
 
 type RecorderState = "idle" | "playing" | "preparing" | "ready" | "recording" | "processing" | "submitting";
 type PromptRecording = { blob: Blob | null; audioUrl: string | null; durationSeconds: number };
@@ -76,6 +83,7 @@ export function FullMockTest() {
   const [submissionStage, setSubmissionStage] = useState<SubmissionStage>("idle");
   const [submissionPhases, setSubmissionPhases] = useState<SubmissionPhases | null>(null);
   const [submissionWarnings, setSubmissionWarnings] = useState<string[]>([]);
+  const [, setTranscribedPayload] = useState<MockPromptTranscript[] | null>(null);
 
   const recorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -337,62 +345,147 @@ export function FullMockTest() {
     }
     setSubmissionPhases(null);
     setSubmissionWarnings([]);
+    setTranscribedPayload(null);
     setSubmissionStage("uploading");
     setSubmissionProgress(8);
-    setRecorderState("submitting"); setStatus("正在生成 Mock Report，请稍候。");
+    setRecorderState("submitting"); setStatus("正在上传录音并准备转写，请稍候。");
     const metadata: MockPromptTranscript[] = session.prompts.map((prompt, index) => ({ id: prompt.id, part: prompt.part, topic: prompt.topic, prompt: prompt.prompt, transcript: "", durationSeconds: recordings[index]?.durationSeconds ?? 0 }));
     const formData = new FormData();
     formData.append("session", JSON.stringify(session));
     formData.append("metadata", JSON.stringify(metadata));
     formData.append("totalDurationSeconds", String(Math.round(totalDurationSeconds)));
     recordings.forEach((item, index) => { if (item.blob) formData.append(`audio_${index}`, item.blob, `${session.prompts[index]?.id ?? index}.ogg`); });
-    const response = await fetch("/api/mock-assessment", { method: "POST", headers: { Authorization: `Bearer ${accessToken}` }, body: formData });
-    let payload: MockAssessmentApiResponse | null = null;
+    const transcriptionResponse = await fetch("/api/mock-assessment/transcribe", { method: "POST", headers: { Authorization: `Bearer ${accessToken}` }, body: formData });
+    let transcriptionPayload: MockTranscriptionApiResponse | null = null;
+    let rawResponseText = "";
     try {
-      payload = (await response.json()) as MockAssessmentApiResponse;
+      rawResponseText = await transcriptionResponse.text();
+      transcriptionPayload = rawResponseText ? (JSON.parse(rawResponseText) as MockTranscriptionApiResponse) : null;
     } catch {
-      payload = null;
+      transcriptionPayload = null;
     }
 
-    if (payload?.phases) {
-      setSubmissionPhases(payload.phases);
-      setSubmissionWarnings(payload.warnings ?? []);
-      const nextStage =
-        payload.phases.assessment.status === "success" || payload.phases.assessment.status === "fallback"
-          ? "finalizing"
-          : payload.phases.transcription.status === "success" || payload.phases.transcription.status === "fallback"
-            ? "analyzing"
-            : "transcribing";
-      setSubmissionStage(nextStage);
-      setSubmissionProgress(getSubmissionStageWeight(nextStage));
+    if (transcriptionPayload?.phases) {
+      setSubmissionPhases(transcriptionPayload.phases);
+      setSubmissionWarnings(transcriptionPayload.warnings ?? []);
+      setSubmissionStage("transcribing");
+      setSubmissionProgress(getSubmissionStageWeight("transcribing"));
     }
 
-    if (response.status === 401) {
+    if (transcriptionResponse.status === 401) {
       setSubmissionProgress(getSubmissionStageWeight("transcribing"));
       setSubmissionStage("transcribing");
       setRecorderState("ready"); await persistPendingSubmission();
       router.push(`/me?returnTo=${encodeURIComponent(`/mock/full?resumeMock=1&sessionId=${session.id}`)}`); return;
     }
-    if (response.status === 403) {
+    if (transcriptionResponse.status === 403) {
       setRecorderState("ready");
       await persistPendingSubmission();
       setShowUpgradePrompt(true);
-      setStatus(payload?.error || "当前可用次数不足，请先开通对应方案后再继续生成模考报告。");
+      setStatus(transcriptionPayload?.error || "当前可用次数不足，请先开通对应方案后再继续生成模考报告。");
       return;
     }
-    if (!response.ok || !payload?.ok || !payload.result) {
+    if (!transcriptionResponse.ok || !transcriptionPayload?.ok || !transcriptionPayload.transcripts?.length) {
       setRecorderState("ready");
-      const failureReason = payload?.phases.assessment.reason || payload?.phases.transcription.reason || payload?.error;
+      if (!transcriptionPayload) {
+        setSubmissionPhases({
+          transcription: {
+            status: "failed",
+            message: "服务端没有返回可识别的阶段数据",
+            reason: transcriptionResponse.ok
+              ? "接口返回了非 JSON 内容，通常表示云端还是旧版本，或服务端抛错后返回了 HTML。"
+              : `HTTP ${transcriptionResponse.status}${rawResponseText ? `: ${rawResponseText.slice(0, 180)}` : ""}`,
+          },
+          assessment: {
+            status: "failed",
+            message: "AI 报告阶段未开始",
+            reason: "请先检查云服务器是否已经部署最新的转写接口，并确认 Next.js 服务已重启。",
+          },
+        });
+        setStatus(
+          transcriptionResponse.ok
+            ? "服务端返回了旧格式或非 JSON 响应，请确认云服务器已部署新版 /api/mock-assessment/transcribe。"
+            : `录音转写失败，服务器返回 HTTP ${transcriptionResponse.status}。`,
+        );
+        return;
+      }
+
+      const failureReason =
+        transcriptionPayload.phases.transcription.reason || transcriptionPayload.phases.assessment.reason || transcriptionPayload.error;
       setStatus(failureReason || "Mock Report 生成失败，请稍后重试。");
       return;
     }
 
-    const result = payload.result;
+    setTranscribedPayload(transcriptionPayload.transcripts);
+    setSubmissionStage("analyzing");
+    setSubmissionProgress(getSubmissionStageWeight("analyzing"));
+    setStatus("录音转写已完成，正在逐题分析并汇总整套报告。");
+
+    const reportResponse = await fetch("/api/mock-assessment/report", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        session,
+        transcripts: transcriptionPayload.transcripts,
+        totalDurationSeconds: Math.round(totalDurationSeconds),
+      }),
+    });
+
+    let reportPayload: MockAssessmentApiResponse | null = null;
+    let rawReportText = "";
+    try {
+      rawReportText = await reportResponse.text();
+      reportPayload = rawReportText ? (JSON.parse(rawReportText) as MockAssessmentApiResponse) : null;
+    } catch {
+      reportPayload = null;
+    }
+
+    if (reportPayload?.phases) {
+      setSubmissionPhases(reportPayload.phases);
+      setSubmissionWarnings(reportPayload.warnings ?? transcriptionPayload.warnings ?? []);
+      const nextStage =
+        reportPayload.phases.assessment.status === "success" || reportPayload.phases.assessment.status === "fallback"
+          ? "finalizing"
+          : "analyzing";
+      setSubmissionStage(nextStage);
+      setSubmissionProgress(getSubmissionStageWeight(nextStage));
+    }
+
+    if (!reportResponse.ok || !reportPayload?.ok || !reportPayload.result) {
+      setRecorderState("ready");
+      if (!reportPayload) {
+        setSubmissionPhases({
+          transcription: transcriptionPayload.phases.transcription,
+          assessment: {
+            status: "failed",
+            message: "服务端没有返回可识别的报告阶段数据",
+            reason: reportResponse.ok
+              ? "接口返回了非 JSON 内容，通常表示云端还是旧版本，或服务端抛错后返回了 HTML。"
+              : `HTTP ${reportResponse.status}${rawReportText ? `: ${rawReportText.slice(0, 180)}` : ""}`,
+          },
+        });
+        setStatus(
+          reportResponse.ok
+            ? "服务端返回了旧格式或非 JSON 响应，请确认云服务器已部署新版 /api/mock-assessment/report。"
+            : `AI 报告生成失败，服务器返回 HTTP ${reportResponse.status}。`,
+        );
+        return;
+      }
+
+      const failureReason = reportPayload.phases.assessment.reason || reportPayload.error;
+      setStatus(failureReason || "AI 报告生成失败，请稍后重试。");
+      return;
+    }
+
+    const result = reportPayload.result;
     setSubmissionProgress(100);
     setSubmissionStage("finalizing");
     saveMockReport(session.id, { session, result });
     await deletePendingMockSubmission(session.id); await refreshUsage();
-    if (payload.phases.transcription.status === "fallback" || payload.phases.assessment.status === "fallback") {
+    if (reportPayload.phases.transcription.status === "fallback" || reportPayload.phases.assessment.status === "fallback") {
       setStatus("Mock Report 已生成，但其中一个阶段已降级为兜底结果。你仍可进入报告查看详情。");
     } else {
       setStatus("Mock Report 已生成，正在进入报告页面。");

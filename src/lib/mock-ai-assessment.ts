@@ -7,18 +7,23 @@ import type {
   MockTestSession,
 } from "@/lib/types";
 
-type GenerateMockAssessmentOptions = {
-  session: MockTestSession;
-  transcripts: MockPromptTranscript[];
-  totalDurationSeconds: number;
-};
-
 type ChatCompletionResponse = {
   choices?: Array<{
     message?: {
       content?: string | Array<{ type?: string; text?: string }>;
     };
   }>;
+};
+
+type GenerateMockPromptAssessmentOptions = {
+  transcript: MockPromptTranscript;
+};
+
+type GenerateMockSummaryAssessmentOptions = {
+  session: MockTestSession;
+  transcripts: MockPromptTranscript[];
+  totalDurationSeconds: number;
+  promptBreakdowns: MockPromptBreakdown[];
 };
 
 function clampBand(score: number) {
@@ -89,36 +94,20 @@ function sanitizePartBreakdowns(value: unknown): MockPartBreakdown[] {
     .filter((item) => item.topic && item.summary);
 }
 
-function sanitizePromptBreakdowns(value: unknown): MockPromptBreakdown[] {
-  if (!Array.isArray(value)) {
-    return [];
-  }
-  return value
-    .filter((item): item is Record<string, unknown> => typeof item === "object" && item !== null)
-    .map((item) => {
-      const upgrades =
-        typeof item.upgrades === "object" && item.upgrades !== null ? (item.upgrades as Record<string, unknown>) : {};
-
-      return {
-        id: typeof item.id === "string" ? item.id.trim() : "",
-        part: (item.part as MockPromptBreakdown["part"]) || "Part 1",
-        topic: typeof item.topic === "string" ? item.topic.trim() : "",
-        prompt: typeof item.prompt === "string" ? item.prompt.trim() : "",
-        score: clampBand(Number(item.score ?? 0)),
-        summary: typeof item.summary === "string" ? item.summary.trim() : "",
-        strengths: sanitizeStringArray(item.strengths, 3),
-        weaknesses: sanitizeStringArray(item.weaknesses, 3),
-        conclusion: typeof item.conclusion === "string" ? item.conclusion.trim() : "",
-        masteredPhrases: sanitizeStringArray(item.masteredPhrases, 4),
-        polishedVersion:
-          typeof item.polishedVersion === "string"
-            ? item.polishedVersion.trim()
-            : typeof upgrades.band8 === "string"
-              ? upgrades.band8.trim()
-              : "",
-      };
-    })
-    .filter((item) => item.id && item.prompt);
+function sanitizePromptBreakdown(item: Record<string, unknown>, transcript: MockPromptTranscript): MockPromptBreakdown {
+  return {
+    id: transcript.id,
+    part: transcript.part,
+    topic: transcript.topic,
+    prompt: transcript.prompt,
+    score: clampBand(Number(item.score ?? 0)),
+    summary: typeof item.summary === "string" ? item.summary.trim() : "",
+    strengths: sanitizeStringArray(item.strengths, 3),
+    weaknesses: sanitizeStringArray(item.weaknesses, 3),
+    conclusion: typeof item.conclusion === "string" ? item.conclusion.trim() : "",
+    masteredPhrases: sanitizeStringArray(item.masteredPhrases, 4),
+    polishedVersion: typeof item.polishedVersion === "string" ? item.polishedVersion.trim() : "",
+  };
 }
 
 function buildFallbackPromptBreakdown(transcript: MockPromptTranscript): MockPromptBreakdown {
@@ -210,31 +199,6 @@ function buildFallbackCriteria(payload: Record<string, unknown>): MockCriterionB
   }));
 }
 
-function mergePromptBreakdowns(transcripts: MockPromptTranscript[], promptBreakdowns: MockPromptBreakdown[]) {
-  const breakdownMap = new Map(promptBreakdowns.map((item) => [item.id, item]));
-
-  return transcripts.map((transcript) => {
-    const matched = breakdownMap.get(transcript.id);
-    const fallback = buildFallbackPromptBreakdown(transcript);
-
-    if (!matched) {
-      return fallback;
-    }
-
-    return {
-      ...fallback,
-      ...matched,
-      score: matched.score > 0 ? matched.score : fallback.score,
-      summary: matched.summary || fallback.summary,
-      strengths: matched.strengths.length ? matched.strengths : fallback.strengths,
-      weaknesses: matched.weaknesses.length ? matched.weaknesses : fallback.weaknesses,
-      conclusion: matched.conclusion || fallback.conclusion,
-      masteredPhrases: matched.masteredPhrases.length ? matched.masteredPhrases : fallback.masteredPhrases,
-      polishedVersion: matched.polishedVersion || fallback.polishedVersion,
-    };
-  });
-}
-
 function mergePartBreakdowns(
   transcripts: MockPromptTranscript[],
   partBreakdowns: MockPartBreakdown[],
@@ -256,16 +220,105 @@ function mergePartBreakdowns(
   });
 }
 
-function buildPrompt({ session, transcripts, totalDurationSeconds }: GenerateMockAssessmentOptions) {
-  const transcriptBlock = transcripts
+async function requestJsonFromModel(prompt: string) {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    throw new Error("OPENAI_API_KEY is missing.");
+  }
+
+  const baseUrl = (process.env.OPENAI_BASE_URL || "https://api.openai.com/v1").replace(/\/+$/, "");
+  const model = process.env.OPENAI_MODEL || "gpt-4o-mini";
+
+  const response = await fetch(`${baseUrl}/chat/completions`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model,
+      temperature: 0.3,
+      response_format: { type: "json_object" },
+      messages: [
+        {
+          role: "system",
+          content: "You are an IELTS mock speaking scoring engine. Return strict JSON only.",
+        },
+        {
+          role: "user",
+          content: prompt,
+        },
+      ],
+    }),
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`Mock assessment request failed with ${response.status}: ${text.slice(0, 200)}`);
+  }
+
+  const data = (await response.json()) as ChatCompletionResponse;
+  const content = extractContent(data);
+  if (!content) {
+    throw new Error("Mock assessment response content is empty.");
+  }
+
+  return parseJsonContent(content) as Record<string, unknown>;
+}
+
+function buildPromptAssessmentPrompt(transcript: MockPromptTranscript) {
+  return `
+You are a strict IELTS Speaking examiner.
+Return valid JSON only.
+All explanations must be in Simplified Chinese.
+
+Candidate response:
+- Part: ${transcript.part}
+- Topic: ${transcript.topic}
+- Prompt: ${transcript.prompt}
+- Duration seconds: ${transcript.durationSeconds}
+- Transcript:
+${transcript.transcript}
+
+Return JSON with exactly this shape:
+{
+  "score": number,
+  "summary": string,
+  "strengths": string[],
+  "weaknesses": string[],
+  "conclusion": string,
+  "masteredPhrases": string[],
+  "polishedVersion": string
+}
+
+Requirements:
+- score must use 0.5 steps.
+- strengths: 1 to 3 concise Chinese points.
+- weaknesses: 1 to 3 concise Chinese points.
+- summary and conclusion must be concise Chinese feedback.
+- masteredPhrases must contain 2 to 4 short English phrases actually used well by the candidate when possible.
+- polishedVersion must be one complete English Band 8 answer based on the candidate's original answer. Keep the original meaning and key information, allow moderate completion, and do not invent a different story.
+  `.trim();
+}
+
+function buildSummaryAssessmentPrompt({
+  session,
+  transcripts,
+  totalDurationSeconds,
+  promptBreakdowns,
+}: GenerateMockSummaryAssessmentOptions) {
+  const promptBlock = promptBreakdowns
     .map(
       (item, index) => `#${index + 1}
 Part: ${item.part}
 Topic: ${item.topic}
 Prompt: ${item.prompt}
-Duration: ${item.durationSeconds}s
-Transcript:
-${item.transcript}`,
+Transcript: ${transcripts.find((transcript) => transcript.id === item.id)?.transcript ?? ""}
+Prompt score: ${item.score}
+Prompt summary: ${item.summary}
+Strengths: ${item.strengths.join(" | ") || "N/A"}
+Weaknesses: ${item.weaknesses.join(" | ") || "N/A"}`,
     )
     .join("\n\n");
 
@@ -280,8 +333,8 @@ Mock session metadata:
 - Part 3 topic: ${session.part3Topic}
 - Total duration seconds: ${totalDurationSeconds}
 
-Candidate responses:
-${transcriptBlock}
+Per-question analysis:
+${promptBlock}
 
 Return JSON with exactly this shape:
 {
@@ -310,21 +363,6 @@ Return JSON with exactly this shape:
       "weaknesses": string[]
     }
   ],
-  "promptBreakdowns": [
-    {
-      "id": string,
-      "part": "Part 1" | "Part 2" | "Part 3",
-      "topic": string,
-      "prompt": string,
-      "score": number,
-      "summary": string,
-      "strengths": string[],
-      "weaknesses": string[],
-      "conclusion": string,
-      "masteredPhrases": string[],
-      "polishedVersion": string
-    }
-  ],
   "improvementPlan": string[]
 }
 
@@ -332,76 +370,44 @@ Requirements:
 - Band scores use 0.5 steps.
 - criteria must contain exactly 4 entries.
 - partBreakdowns must contain exactly Part 1, Part 2, and Part 3.
-- promptBreakdowns must contain one entry for every prompt above.
-- Each partBreakdown and promptBreakdown must include a score using 0.5 band steps.
-- Each promptBreakdown should include 2-4 mastered phrases and one complete English Band 8 polished version based on the candidate's original answer. Keep the original meaning and key information, allow moderate completion, and do not invent a different story.
 - improvementPlan must contain 5 actionable Chinese steps.
 - confidenceNote should clearly say this is based on a full mock test and for practice reference.
   `.trim();
 }
 
-export async function generateMockAiAssessment(
-  options: GenerateMockAssessmentOptions,
-): Promise<MockAssessmentResult> {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) {
-    throw new Error("OPENAI_API_KEY is missing.");
+export async function generateMockPromptAssessment(options: GenerateMockPromptAssessmentOptions): Promise<MockPromptBreakdown> {
+  try {
+    const payload = await requestJsonFromModel(buildPromptAssessmentPrompt(options.transcript));
+    const sanitized = sanitizePromptBreakdown(payload, options.transcript);
+    const fallback = buildFallbackPromptBreakdown(options.transcript);
+
+    return {
+      ...fallback,
+      ...sanitized,
+      score: sanitized.score > 0 ? sanitized.score : fallback.score,
+      summary: sanitized.summary || fallback.summary,
+      strengths: sanitized.strengths.length ? sanitized.strengths : fallback.strengths,
+      weaknesses: sanitized.weaknesses.length ? sanitized.weaknesses : fallback.weaknesses,
+      conclusion: sanitized.conclusion || fallback.conclusion,
+      masteredPhrases: sanitized.masteredPhrases.length ? sanitized.masteredPhrases : fallback.masteredPhrases,
+      polishedVersion: sanitized.polishedVersion || fallback.polishedVersion,
+    };
+  } catch {
+    return buildFallbackPromptBreakdown(options.transcript);
   }
+}
 
-  const baseUrl = (process.env.OPENAI_BASE_URL || "https://api.openai.com/v1").replace(/\/+$/, "");
-  const model = process.env.OPENAI_MODEL || "gpt-4o-mini";
-  const prompt = buildPrompt(options);
-
-  const response = await fetch(`${baseUrl}/chat/completions`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model,
-      temperature: 0.3,
-      response_format: { type: "json_object" },
-      messages: [
-        {
-          role: "system",
-          content: "You are an IELTS mock speaking scoring engine. Return strict JSON only.",
-        },
-        {
-          role: "user",
-          content: prompt,
-        },
-      ],
-    }),
-    cache: "no-store",
-  });
-
-  if (!response.ok) {
-    throw new Error(`Mock assessment request failed with ${response.status}.`);
-  }
-
-  const data = (await response.json()) as ChatCompletionResponse;
-  const content = extractContent(data);
-  if (!content) {
-    throw new Error("Mock assessment response content is empty.");
-  }
-
-  const payload = parseJsonContent(content) as Record<string, unknown>;
+export async function generateMockSummaryAssessment(
+  options: GenerateMockSummaryAssessmentOptions,
+): Promise<Omit<MockAssessmentResult, "completedAt" | "transcripts" | "provider" | "transcriptProvider" | "promptBreakdowns">> {
+  const payload = await requestJsonFromModel(buildSummaryAssessmentPrompt(options));
   const criteria = sanitizeCriterion(payload.criteria);
-  const sanitizedPartBreakdowns = sanitizePartBreakdowns(payload.partBreakdowns);
-  const sanitizedPromptBreakdowns = sanitizePromptBreakdowns(payload.promptBreakdowns);
-  const promptBreakdowns = mergePromptBreakdowns(options.transcripts, sanitizedPromptBreakdowns);
-  const partBreakdowns = mergePartBreakdowns(options.transcripts, sanitizedPartBreakdowns, promptBreakdowns);
+  const partBreakdowns = mergePartBreakdowns(
+    options.transcripts,
+    sanitizePartBreakdowns(payload.partBreakdowns),
+    options.promptBreakdowns,
+  );
   const improvementPlan = sanitizeStringArray(payload.improvementPlan, 5);
-  const resolvedCriteria = criteria.length === 4 ? criteria : buildFallbackCriteria(payload);
-  const resolvedImprovementPlan =
-    improvementPlan.length >= 3
-      ? improvementPlan
-      : [
-          "先逐题复盘转写，确认每道题是否直接回应了问题。",
-          "优先补强回答展开，尽量形成“观点 + 原因 + 例子”的结构。",
-          "把高频口语搭配和连接表达整理成清单，做一轮跟读和替换练习。",
-        ];
 
   return {
     predictedOverallBand: clampBand(Number(payload.predictedOverallBand ?? 0)),
@@ -409,7 +415,6 @@ export async function generateMockAiAssessment(
     lexical: clampBand(Number(payload.lexical ?? 0)),
     grammar: clampBand(Number(payload.grammar ?? 0)),
     pronunciation: clampBand(Number(payload.pronunciation ?? 0)),
-    completedAt: new Date().toISOString(),
     totalDurationSeconds: options.totalDurationSeconds,
     part1Theme: `${options.session.part1RequiredTheme} / ${options.session.part1GeneralTheme}`,
     part2Topic: options.session.part2Topic,
@@ -418,10 +423,37 @@ export async function generateMockAiAssessment(
       typeof payload.confidenceNote === "string" && payload.confidenceNote.trim()
         ? payload.confidenceNote.trim()
         : "本次分数基于完整全真模考的录音与转写生成，仅供练习参考。",
-    criteria: resolvedCriteria,
+    criteria: criteria.length === 4 ? criteria : buildFallbackCriteria(payload),
     partBreakdowns,
+    improvementPlan:
+      improvementPlan.length >= 3
+        ? improvementPlan
+        : [
+            "先逐题复盘转写，确认每道题是否直接回应了问题。",
+            "优先补强回答展开，尽量形成“观点 + 原因 + 例子”的结构。",
+            "把高频口语搭配和连接表达整理成清单，做一轮跟读和替换练习。",
+          ],
+  };
+}
+
+export async function generateMockAiAssessment(
+  options: Omit<GenerateMockSummaryAssessmentOptions, "promptBreakdowns">,
+): Promise<MockAssessmentResult> {
+  const promptBreakdowns: MockPromptBreakdown[] = [];
+
+  for (const transcript of options.transcripts) {
+    promptBreakdowns.push(await generateMockPromptAssessment({ transcript }));
+  }
+
+  const summary = await generateMockSummaryAssessment({
+    ...options,
     promptBreakdowns,
-    improvementPlan: resolvedImprovementPlan,
+  });
+
+  return {
+    ...summary,
+    completedAt: new Date().toISOString(),
+    promptBreakdowns,
     transcripts: options.transcripts,
     provider: "ai-scored",
     transcriptProvider: "tencent-cloud",

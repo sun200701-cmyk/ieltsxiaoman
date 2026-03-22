@@ -186,3 +186,15 @@ export type MockAssessmentApiResponse = {
     assessment: MockGenerationPhase;
   };
 };
+
+export type MockTranscriptionApiResponse = {
+  ok: boolean;
+  code?: string;
+  error?: string;
+  transcripts?: MockPromptTranscript[];
+  warnings?: string[];
+  phases: {
+    transcription: MockGenerationPhase;
+    assessment: MockGenerationPhase;
+  };
+};
