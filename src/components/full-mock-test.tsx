@@ -23,6 +23,7 @@ type SubmissionStage = "idle" | "uploading" | "transcribing" | "analyzing" | "fi
 type SubmissionPhases = MockAssessmentApiResponse["phases"];
 
 const EXAMINER_NAMES = ["Emily Carter", "Charlotte Hughes", "Sophie Mitchell", "Hannah Wilson", "Victoria Ellison", "Lucy Green", "Anna Scott"];
+const DEFAULT_REPORT_GENERATION_SECONDS = 180;
 const formatDuration = (s: number) => `${Math.floor(Math.max(0, s) / 60)}:${String(Math.max(0, s) % 60).padStart(2, "0")}`;
 const isPart2Prompt = (prompt: MockPrompt | null): prompt is MockPrompt => Boolean(prompt && prompt.part === "Part 2" && (prompt.prepSeconds ?? 0) > 0);
 const createEmptyRecordings = (session: MockTestSession): PromptRecording[] => session.prompts.map(() => ({ blob: null, audioUrl: null, durationSeconds: 0 }));
@@ -83,6 +84,7 @@ export function FullMockTest() {
   const [submissionStage, setSubmissionStage] = useState<SubmissionStage>("idle");
   const [submissionPhases, setSubmissionPhases] = useState<SubmissionPhases | null>(null);
   const [submissionWarnings, setSubmissionWarnings] = useState<string[]>([]);
+  const [submissionElapsedSeconds, setSubmissionElapsedSeconds] = useState(0);
   const [, setTranscribedPayload] = useState<MockPromptTranscript[] | null>(null);
 
   const recorderRef = useRef<MediaRecorder | null>(null);
@@ -94,6 +96,7 @@ export function FullMockTest() {
   const introTimerRef = useRef<number | null>(null);
   const speechTimerRef = useRef<number | null>(null);
   const submissionTimerRef = useRef<number | null>(null);
+  const submissionStartedAtRef = useRef<number | null>(null);
   const restoredRef = useRef(false);
   const autoSubmittedRef = useRef(false);
   const recordingsRef = useRef(recordings);
@@ -101,11 +104,19 @@ export function FullMockTest() {
   const resumeMock = searchParams.get("resumeMock") === "1";
   const resumeSessionId = searchParams.get("sessionId");
   const currentPrompt = activeIndex >= 0 ? session.prompts[activeIndex] : null;
+  const part1PromptCount = session.prompts.filter((prompt) => prompt.part === "Part 1").length;
   const completedCount = recordings.filter((item) => item.blob).length;
   const allRecorded = completedCount === session.prompts.length;
   const totalDurationSeconds = recordings.reduce((sum, item) => sum + item.durationSeconds, 0);
   const progressPercent = activeIndex < 0 ? 0 : ((activeIndex + 1) / session.prompts.length) * 100;
   const usageLine = !user ? "未登录状态下可以完成整套录音，但生成正式模考报告前需要先登录。" : !usage ? "正在加载额度信息。" : usage.hasActiveMembership ? `会员主额度剩余 ${usage.membershipQuotaRemaining} 次，加量包剩余 ${usage.activeAddonCreditsRemaining} 次。` : `免费分析次数剩余 ${usage.freeTrialsRemaining} 次。`;
+  const submissionRemainingSeconds = Math.max(0, DEFAULT_REPORT_GENERATION_SECONDS - submissionElapsedSeconds);
+  const submissionEtaLabel =
+    recorderState === "submitting"
+      ? submissionRemainingSeconds > 0
+        ? `预计剩余时长 ${formatDuration(submissionRemainingSeconds)}`
+        : "预计即将完成，请稍候"
+      : `预计生成时间约 ${Math.floor(DEFAULT_REPORT_GENERATION_SECONDS / 60)} 分钟`;
 
   useEffect(() => { recordingsRef.current = recordings; }, [recordings]);
   useEffect(() => () => {
@@ -123,15 +134,20 @@ export function FullMockTest() {
     if (recorderState !== "submitting") {
       if (submissionTimerRef.current) window.clearInterval(submissionTimerRef.current);
       submissionTimerRef.current = null;
+      submissionStartedAtRef.current = null;
       setSubmissionStage("idle");
       setSubmissionProgress(0);
+      setSubmissionElapsedSeconds(0);
       return;
     }
 
+    submissionStartedAtRef.current = Date.now();
+    setSubmissionElapsedSeconds(0);
     setSubmissionStage("uploading");
     setSubmissionProgress((current) => (current > 8 ? current : 8));
 
     submissionTimerRef.current = window.setInterval(() => {
+      setSubmissionElapsedSeconds(Math.floor((Date.now() - (submissionStartedAtRef.current ?? Date.now())) / 1000));
       setSubmissionProgress((current) => {
         if (current >= 92) return current;
 
@@ -160,6 +176,7 @@ export function FullMockTest() {
     return () => {
       if (submissionTimerRef.current) window.clearInterval(submissionTimerRef.current);
       submissionTimerRef.current = null;
+      submissionStartedAtRef.current = null;
     };
   }, [recorderState]);
 
@@ -533,7 +550,7 @@ export function FullMockTest() {
 
         {activeIndex < 0 ? <div className="grid gap-6 rounded-[24px] border border-black/8 bg-[#fffcf6] p-4 sm:rounded-[28px] sm:p-8">
           <div className="grid gap-3 md:grid-cols-3">
-            <div className="rounded-[24px] bg-white p-5"><p className="text-xs uppercase tracking-[0.24em] text-[#8d7557]">Part 1</p><p className="mt-3 text-lg font-semibold text-[#101828]">{session.part1RequiredTheme} + {session.part1GeneralTheme}</p><p className="mt-2 text-sm leading-7 text-[#5b5349]">共 8 题，模拟真实短答节奏。</p></div>
+            <div className="rounded-[24px] bg-white p-5"><p className="text-xs uppercase tracking-[0.24em] text-[#8d7557]">Part 1</p><p className="mt-3 text-lg font-semibold text-[#101828]">{session.part1RequiredTheme} + {session.part1GeneralTheme}</p><p className="mt-2 text-sm leading-7 text-[#5b5349]">共 {part1PromptCount} 题，每个话题随机抽取 4-5 题。</p></div>
             <div className="rounded-[24px] bg-white p-5"><p className="text-xs uppercase tracking-[0.24em] text-[#8d7557]">Part 2</p><p className="mt-3 text-lg font-semibold text-[#101828]">{session.part2Topic}</p><p className="mt-2 text-sm leading-7 text-[#5b5349]">含 1 分钟准备时间，准备结束后由考官提示开始回答。</p></div>
             <div className="rounded-[24px] bg-white p-5"><p className="text-xs uppercase tracking-[0.24em] text-[#8d7557]">Part 3</p><p className="mt-3 text-lg font-semibold text-[#101828]">{session.part3Topic}</p><p className="mt-2 text-sm leading-7 text-[#5b5349]">与 Part 2 主题顺承，统一完成深度讨论。</p></div>
           </div>
@@ -566,7 +583,10 @@ export function FullMockTest() {
                 <div className="h-3 overflow-hidden rounded-full bg-[#efe9dc]">
                   <div className="h-full rounded-full bg-[#101828] transition-all duration-700" style={{ width: `${submissionProgress}%` }} />
                 </div>
-                <p className="text-xs leading-6 text-[#6f675c]">生成阶段会按上传录音、转写、分析、整理报告依次推进，避免长时间无反馈。</p>
+                <div className="flex items-center justify-between gap-3 text-xs text-[#6f675c]">
+                  <span>默认生成时间 3 分钟</span>
+                  <span>{submissionEtaLabel}</span>
+                </div>
                 {submissionDetails.length ? (
                   <div className="grid gap-2">
                     {submissionDetails.map((item) => (
@@ -605,7 +625,7 @@ export function FullMockTest() {
             <p>已完成 {completedCount} / {session.prompts.length} 题，总录音时长 {formatDuration(Math.round(totalDurationSeconds))}</p>
           </div>
           {recordings[activeIndex]?.audioUrl ? <div className="grid gap-2"><p className="text-sm font-medium text-[#6f675c]">Saved Recording: {formatDuration(Math.round(recordings[activeIndex]?.durationSeconds ?? 0))}</p><audio controls src={recordings[activeIndex]?.audioUrl ?? undefined} className="w-full rounded-2xl border border-black/8 bg-[#faf7f1] p-2" /></div> : null}
-          {allRecorded ? <div className="grid justify-center gap-2 text-center"><button type="button" onClick={() => void handleSubmit()} disabled={recorderState === "submitting" || restoring} className="inline-flex min-h-14 items-center justify-center gap-2 rounded-full border border-black/8 bg-white px-6 text-base font-medium text-[#101828] transition hover:border-black/12 hover:bg-[#f6f0e5] disabled:cursor-not-allowed disabled:text-[#98a2b3] sm:px-8">{recorderState === "submitting" || restoring ? <><LoaderCircle className="h-5 w-5 animate-spin" />{submissionStageLabel}</> : <><Play className="h-5 w-5" />Generate Mock Report</>}</button><p className="text-xs text-[#8d7557]">预计生成时间 1-2 分钟</p></div> : null}
+          {allRecorded ? <div className="grid justify-center gap-2 text-center"><button type="button" onClick={() => void handleSubmit()} disabled={recorderState === "submitting" || restoring} className="inline-flex min-h-14 items-center justify-center gap-2 rounded-full border border-black/8 bg-white px-6 text-base font-medium text-[#101828] transition hover:border-black/12 hover:bg-[#f6f0e5] disabled:cursor-not-allowed disabled:text-[#98a2b3] sm:px-8">{recorderState === "submitting" || restoring ? <><LoaderCircle className="h-5 w-5 animate-spin" />{submissionStageLabel}</> : <><Play className="h-5 w-5" />Generate Mock Report</>}</button><p className="text-xs text-[#8d7557]">预计生成时间约 3 分钟</p></div> : null}
         </div> : null}
       </section>
       {showUpgradePrompt ? <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#101828]/35 px-4"><div className="w-full max-w-lg rounded-[24px] bg-white p-5 shadow-[0_24px_80px_rgba(16,24,40,0.18)] sm:rounded-[28px] sm:p-7"><h3 className="text-2xl font-semibold text-[#101828]">当前次数不足</h3><p className="mt-3 text-sm leading-7 text-[#475467]">Free 用户可以体验全真模考答题流程，但生成正式报告前需要先升级为 Pro 或 Ultra 方案。</p><div className="mt-6 grid gap-3 sm:flex"><button type="button" onClick={() => setShowUpgradePrompt(false)} className="inline-flex flex-1 items-center justify-center rounded-full border border-black/8 bg-white px-4 py-3 text-sm text-[#101828] transition hover:border-black/15 hover:bg-[#f7f1e7]">关闭</button><Link href="/me/pricing" className="inline-flex flex-1 items-center justify-center rounded-full bg-[#101828] px-4 py-3 text-sm font-medium text-white transition hover:bg-[#1b2333]">查看 AI口语定价</Link></div></div></div> : null}

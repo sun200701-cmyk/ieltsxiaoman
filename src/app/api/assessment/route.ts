@@ -9,11 +9,16 @@ import {
 import { generateAiAssessment } from "@/lib/ai-assessment";
 import { generateDemoAssessment, transcribeWithTencentOrFallback } from "@/lib/demo-assessment";
 import { getQuestionById } from "@/lib/questions";
+import type { PracticeAssessmentApiResponse } from "@/lib/types";
 
 function getAccessToken(request: Request) {
   const authorization = request.headers.get("authorization") || "";
   const token = authorization.replace(/^Bearer\s+/i, "").trim();
   return token || null;
+}
+
+function createPendingPhase(message: string) {
+  return { status: "pending" as const, message };
 }
 
 export async function POST(request: Request) {
@@ -24,15 +29,31 @@ export async function POST(request: Request) {
   const activeQuestionIndex = Number(formData.get("activeQuestionIndex") ?? 0);
 
   if (!(audio instanceof File) || typeof questionId !== "string") {
-    return NextResponse.json({ error: "Missing audio or question id." }, { status: 400 });
+    return NextResponse.json<PracticeAssessmentApiResponse>(
+      {
+        ok: false,
+        code: "invalid_payload",
+        error: "Missing audio or question id.",
+        phases: {
+          transcription: { status: "failed", message: "语音转文字未开始", reason: "缺少录音或题目 ID。" },
+          assessment: createPendingPhase("等待转写完成后再分析"),
+        },
+      },
+      { status: 400 },
+    );
   }
 
   const accessToken = getAccessToken(request);
   if (!accessToken) {
-    return NextResponse.json(
+    return NextResponse.json<PracticeAssessmentApiResponse>(
       {
+        ok: false,
         code: "login_required",
         error: "登录后才能使用真实 AI 评分和语音转文字。",
+        phases: {
+          transcription: createPendingPhase("等待登录后开始转写"),
+          assessment: createPendingPhase("等待登录后开始 AI 分析"),
+        },
       },
       { status: 401 },
     );
@@ -40,7 +61,18 @@ export async function POST(request: Request) {
 
   const question = getQuestionById(questionId);
   if (!question) {
-    return NextResponse.json({ error: "Question not found." }, { status: 404 });
+    return NextResponse.json<PracticeAssessmentApiResponse>(
+      {
+        ok: false,
+        code: "question_not_found",
+        error: "Question not found.",
+        phases: {
+          transcription: { status: "failed", message: "语音转文字未开始", reason: "题目不存在。" },
+          assessment: createPendingPhase("等待有效题目后再分析"),
+        },
+      },
+      { status: 404 },
+    );
   }
 
   try {
@@ -49,17 +81,21 @@ export async function POST(request: Request) {
     const usage = await ensureAccountUsage(supabase, user);
 
     if (!usage.hasAvailableAnalysis) {
-      return NextResponse.json(
+      return NextResponse.json<PracticeAssessmentApiResponse>(
         {
+          ok: false,
           code: "quota_exceeded",
-          error: "当前账号可用次数已用完，请前往 AI口语定价 页面联系客服开通套餐或加量包。",
-          usage,
+          error: "当前账号可用次数已用完，请前往 AI口语定价 页面联系开通。",
+          phases: {
+            transcription: createPendingPhase("额度不足，未开始转写"),
+            assessment: createPendingPhase("额度不足，未开始分析"),
+          },
         },
         { status: 403 },
       );
     }
 
-    const { transcript, provider: transcriptProvider } = await transcribeWithTencentOrFallback(
+    const { transcript, provider: transcriptProvider, error: transcriptionError } = await transcribeWithTencentOrFallback(
       audio,
       question,
     );
@@ -83,6 +119,11 @@ export async function POST(request: Request) {
     });
 
     let finalResult = demoResult;
+    let assessmentPhase: PracticeAssessmentApiResponse["phases"]["assessment"] = {
+      status: "fallback",
+      message: "Gemini 分析暂不可用，已切换为兜底结果",
+      provider: "demo-fallback",
+    };
 
     try {
       const aiResult = await generateAiAssessment({
@@ -99,8 +140,19 @@ export async function POST(request: Request) {
         transcriptProvider,
         completedAt: new Date().toISOString(),
       };
-    } catch {
-      finalResult = demoResult;
+
+      assessmentPhase = {
+        status: "success",
+        message: "Gemini 分析完成",
+        provider: "ai-scored",
+      };
+    } catch (error) {
+      assessmentPhase = {
+        status: "fallback",
+        message: "Gemini 分析失败，已切换为兜底结果",
+        provider: "demo-fallback",
+        reason: error instanceof Error ? error.message : "Unknown AI error.",
+      };
     }
 
     await consumeAnalysisCredit(supabase, usage);
@@ -122,14 +174,43 @@ export async function POST(request: Request) {
       duration_seconds: durationSeconds,
     });
 
-    return NextResponse.json(finalResult);
-  } catch {
-    return NextResponse.json(
-      {
-        code: "login_required",
-        error: "登录状态已失效，请重新登录后再试。",
+    return NextResponse.json<PracticeAssessmentApiResponse>({
+      ok: true,
+      result: finalResult,
+      warnings: assessmentPhase.status === "fallback" ? ["本次已切换为兜底版分析结果。"] : [],
+      phases: {
+        transcription:
+          transcriptProvider === "demo-fallback"
+            ? {
+                status: "fallback",
+                message: "语音转文字失败，已切换为兜底转写",
+                provider: "demo-fallback",
+                reason: transcriptionError || "Tencent ASR failed.",
+              }
+            : {
+                status: "success",
+                message: "语音转文字完成",
+                provider: "tencent-cloud",
+              },
+        assessment: assessmentPhase,
       },
-      { status: 401 },
+    });
+  } catch (error) {
+    return NextResponse.json<PracticeAssessmentApiResponse>(
+      {
+        ok: false,
+        code: "assessment_failed",
+        error: "分析失败了，请稍后再试。",
+        phases: {
+          transcription: createPendingPhase("语音转文字未完成"),
+          assessment: {
+            status: "failed",
+            message: "Gemini 分析失败",
+            reason: error instanceof Error ? error.message : "Unknown server error.",
+          },
+        },
+      },
+      { status: 500 },
     );
   }
 }

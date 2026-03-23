@@ -12,9 +12,17 @@ function shuffle<T>(items: T[]) {
   return list;
 }
 
-function buildPart1Prompts(question: DemoQuestion, limit?: number): MockPrompt[] {
-  return [question.prompt, ...question.followUps]
-    .slice(0, limit)
+function pickPart1QuestionCount(total: number) {
+  if (total <= 4) return total;
+  return 4 + Math.floor(Math.random() * Math.min(2, total - 3));
+}
+
+function buildPart1Prompts(question: DemoQuestion): MockPrompt[] {
+  const prompts = shuffle([question.prompt, ...question.followUps]);
+  const count = pickPart1QuestionCount(prompts.length);
+
+  return prompts
+    .slice(0, count)
     .map((prompt, index) => ({
       id: `${question.id}-p1-${index + 1}`,
       part: "Part 1",
@@ -71,8 +79,8 @@ export function createFullMockTestSession(): MockTestSession {
     throw new Error("Question bank is incomplete for mock test generation.");
   }
 
-  const part1RequiredPrompts = buildPart1Prompts(requiredTheme, 4);
-  const part1GeneralPrompts = buildPart1Prompts(generalTheme, 4);
+  const part1RequiredPrompts = buildPart1Prompts(requiredTheme);
+  const part1GeneralPrompts = buildPart1Prompts(generalTheme);
   const part2Prompt = buildPart2Prompt(part2Question);
   const part3Prompts = buildPart3Prompts(part2Question);
 

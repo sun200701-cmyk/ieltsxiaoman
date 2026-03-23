@@ -371,12 +371,9 @@ export function MockReportPromptPage({ sessionId, partSlug, promptId }: Props) {
               <p className="text-xs uppercase tracking-[0.24em] text-[#8d7557]">Band 8 Polished Version</p>
               <TextToSpeechButton text={resolvedDetail.polishedVersion || ""} />
             </div>
-            <p className="mt-4 text-sm leading-7 text-[#667085]">
-              这里只展示真实生成出的优化答案；如果本次没有生成，就保持为空，不再补默认内容。
+            <p className="mt-4 text-base leading-8 text-[#101828]">
+              {resolvedDetail.polishedVersion || "Polished version is not available."}
             </p>
-            <div className="mt-5 rounded-2xl bg-[#eef4ff] p-5">
-              <p className="mt-0 text-sm leading-7 text-[#344054]">{resolvedDetail.polishedVersion || "Polished version is not available."}</p>
-            </div>
           </div>
 
           <div className="rounded-[32px] border border-black/8 bg-white p-7 shadow-[0_18px_50px_rgba(16,24,40,0.06)]">

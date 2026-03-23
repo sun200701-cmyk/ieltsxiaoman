@@ -11,13 +11,14 @@ import { orderedQuestions } from "@/lib/questions";
 import { part2ReferenceAnswersById } from "@/lib/reference-answers";
 import { requiredPart1AnswersByQuestionText } from "@/lib/reference-required-part1-answers";
 import { referenceAnswersByQuestionText } from "@/lib/reference-question-answers";
-import type { AssessmentResult, DemoQuestion } from "@/lib/types";
+import type { AssessmentResult, DemoQuestion, MockGenerationPhase, PracticeAssessmentApiResponse } from "@/lib/types";
 
 type PracticeStudioProps = {
   question: DemoQuestion;
 };
 
 type RecorderState = "idle" | "recording" | "ready" | "submitting";
+type AssessmentStage = "idle" | "transcribing" | "analyzing" | "finalizing";
 
 const scoreLabelMap = {
   overall: { en: "Overall Band", zh: "总成绩" },
@@ -240,6 +241,20 @@ function formatScore(score: number) {
   return Number.isInteger(score) ? String(score) : score.toFixed(1);
 }
 
+function getAssessmentTone(status: MockGenerationPhase["status"]) {
+  if (status === "success") return "text-[#18794e] bg-[#e8f8ee]";
+  if (status === "fallback") return "text-[#b54708] bg-[#fff4e8]";
+  if (status === "failed") return "text-[#b42318] bg-[#fff1f1]";
+  return "text-[#667085] bg-[#f7f3ea]";
+}
+
+function getAssessmentProgress(stage: AssessmentStage) {
+  if (stage === "transcribing") return 40;
+  if (stage === "analyzing") return 82;
+  if (stage === "finalizing") return 100;
+  return 0;
+}
+
 export function PracticeStudio({ question }: PracticeStudioProps) {
   const { accessToken, refreshUsage, usage, user } = useAuth();
   const router = useRouter();
@@ -257,6 +272,10 @@ export function PracticeStudio({ question }: PracticeStudioProps) {
   const [activeQuestionIndex, setActiveQuestionIndex] = useState(0);
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
   const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
+  const [assessmentStage, setAssessmentStage] = useState<AssessmentStage>("idle");
+  const [assessmentPhases, setAssessmentPhases] = useState<PracticeAssessmentApiResponse["phases"] | null>(null);
+  const [assessmentWarnings, setAssessmentWarnings] = useState<string[]>([]);
+  const assessmentStageTimerRef = useRef<number | null>(null);
 
   const nextTheme = useMemo(() => {
     const index = orderedQuestions.findIndex((item) => item.id === question.id);
@@ -343,8 +362,26 @@ export function PracticeStudio({ question }: PracticeStudioProps) {
     return cuePoints.length ? [question.prompt, "You should say", ...cuePoints].join(". ") : question.prompt;
   }, [cuePoints, currentQuestionText, isSequentialPart, question.prompt]);
 
+  const assessmentStageLabel =
+    assessmentStage === "transcribing"
+      ? "正在语音转文字"
+      : assessmentStage === "analyzing"
+        ? "正在进行 Gemini 分析"
+        : assessmentStage === "finalizing"
+          ? "正在整理分析结果"
+          : "等待开始";
+
+  const assessmentDetails = [
+    assessmentPhases ? { label: "语音转文字", phase: assessmentPhases.transcription } : null,
+    assessmentPhases ? { label: "AI 分析", phase: assessmentPhases.assessment } : null,
+  ].filter((item): item is { label: string; phase: MockGenerationPhase } => Boolean(item));
+
   useEffect(() => {
     return () => {
+      if (assessmentStageTimerRef.current) {
+        window.clearTimeout(assessmentStageTimerRef.current);
+        assessmentStageTimerRef.current = null;
+      }
       if (recordingTimerRef.current) {
         window.clearInterval(recordingTimerRef.current);
       }
@@ -406,6 +443,13 @@ export function PracticeStudio({ question }: PracticeStudioProps) {
     setAudioBlob(null);
     setDurationSeconds(0);
     setRecorderState("idle");
+    setAssessmentStage("idle");
+    setAssessmentPhases(null);
+    setAssessmentWarnings([]);
+    if (assessmentStageTimerRef.current) {
+      window.clearTimeout(assessmentStageTimerRef.current);
+      assessmentStageTimerRef.current = null;
+    }
 
     if (audioUrl) {
       URL.revokeObjectURL(audioUrl);
@@ -495,8 +539,38 @@ export function PracticeStudio({ question }: PracticeStudioProps) {
     }
 
     setRecorderState("submitting");
-    setStatus("ChatGPT正在分析你的回答，请稍候...");
+    setAssessmentStage("transcribing");
+    setAssessmentPhases({
+      transcription: { status: "pending", message: "等待服务器开始语音转文字" },
+      assessment: { status: "pending", message: "等待转写完成后开始 Gemini 分析" },
+    });
+    setAssessmentWarnings([]);
+    setStatus("Gemini 正在分析你的回答，请稍候...");
     setShowUpgradePrompt(false);
+
+    if (assessmentStageTimerRef.current) {
+      window.clearTimeout(assessmentStageTimerRef.current);
+      assessmentStageTimerRef.current = null;
+    }
+    assessmentStageTimerRef.current = window.setTimeout(() => {
+      setAssessmentStage("analyzing");
+      setStatus("语音转文字完成，Gemini 正在分析当前回答...");
+      setAssessmentPhases((current) =>
+        current
+          ? {
+              transcription: {
+                status: "success",
+                message: "语音转文字完成",
+                provider: current.transcription.provider || "processing",
+              },
+              assessment: {
+                status: "pending",
+                message: "Gemini 正在分析当前回答",
+              },
+            }
+          : current,
+      );
+    }, 1400);
 
     const formData = new FormData();
     formData.append("audio", audioBlob, `${question.slug}.ogg`);
@@ -512,7 +586,36 @@ export function PracticeStudio({ question }: PracticeStudioProps) {
       body: formData,
     });
 
+    let payload: PracticeAssessmentApiResponse | null = null;
+    let rawResponseText = "";
+    try {
+      rawResponseText = await response.text();
+      payload = rawResponseText ? (JSON.parse(rawResponseText) as PracticeAssessmentApiResponse) : null;
+    } catch {
+      payload = null;
+    }
+
+    if (payload?.phases) {
+      if (assessmentStageTimerRef.current) {
+        window.clearTimeout(assessmentStageTimerRef.current);
+        assessmentStageTimerRef.current = null;
+      }
+      setAssessmentPhases(payload.phases);
+      setAssessmentWarnings(payload.warnings ?? []);
+      const nextStage =
+        payload.phases.assessment.status === "success" || payload.phases.assessment.status === "fallback"
+          ? "finalizing"
+          : payload.phases.transcription.status === "success" || payload.phases.transcription.status === "fallback"
+            ? "analyzing"
+            : "transcribing";
+      setAssessmentStage(nextStage);
+    }
+
     if (response.status === 401) {
+      if (assessmentStageTimerRef.current) {
+        window.clearTimeout(assessmentStageTimerRef.current);
+        assessmentStageTimerRef.current = null;
+      }
       setRecorderState("ready");
       setShowLoginPrompt(true);
       setStatus("请先登录，再使用真实 AI 分析。");
@@ -520,22 +623,62 @@ export function PracticeStudio({ question }: PracticeStudioProps) {
     }
 
     if (response.status === 403) {
+      if (assessmentStageTimerRef.current) {
+        window.clearTimeout(assessmentStageTimerRef.current);
+        assessmentStageTimerRef.current = null;
+      }
       setRecorderState("ready");
       setShowUpgradePrompt(true);
-      setStatus("当前可用次数已用完，请前往 AI 口语定价页面联系客服开通。");
+      setStatus(payload?.error || "当前可用次数已用完，请前往 AI 口语定价页面联系客服开通。");
       return;
     }
 
-    if (!response.ok) {
+    if (!response.ok || !payload?.ok || !payload.result) {
+      if (assessmentStageTimerRef.current) {
+        window.clearTimeout(assessmentStageTimerRef.current);
+        assessmentStageTimerRef.current = null;
+      }
       setRecorderState("ready");
-      setStatus("分析失败了，请稍后再试。");
+      if (!payload) {
+        setAssessmentPhases({
+          transcription: {
+            status: "failed",
+            message: "服务端没有返回可识别的阶段数据",
+            reason: response.ok
+              ? "接口返回了非 JSON 内容，通常表示云端还是旧版本，或服务端抛错后返回了 HTML。"
+              : `HTTP ${response.status}${rawResponseText ? `: ${rawResponseText.slice(0, 180)}` : ""}`,
+          },
+          assessment: {
+            status: "failed",
+            message: "Gemini 分析未开始",
+            reason: "请先检查本地或云端是否已经部署最新的 /api/assessment 接口。",
+          },
+        });
+        setStatus(
+          response.ok
+            ? "服务端返回了旧格式或非 JSON 响应，请确认当前接口已升级到 Gemini 分阶段分析版本。"
+            : `分析失败了，服务器返回 HTTP ${response.status}。`,
+        );
+        return;
+      }
+
+      const failureReason = payload.phases.assessment.reason || payload.phases.transcription.reason || payload.error;
+      setStatus(failureReason || "分析失败了，请稍后再试。");
       return;
     }
 
-    const nextResult = (await response.json()) as AssessmentResult;
-    setResult(nextResult);
+    setResult(payload.result);
+    if (assessmentStageTimerRef.current) {
+      window.clearTimeout(assessmentStageTimerRef.current);
+      assessmentStageTimerRef.current = null;
+    }
     setRecorderState("ready");
-    setStatus("分析完成，可以查看你的冲刺建议和表达升级。");
+    setAssessmentStage("finalizing");
+    setStatus(
+      payload.phases.assessment.status === "fallback"
+        ? "分析已完成，但本次已自动切换为兜底结果。"
+        : "Gemini 分析完成，可以查看你的冲刺建议和表达升级。",
+    );
     await refreshUsage();
   };
   const handleReanswer = () => {
@@ -702,7 +845,7 @@ export function PracticeStudio({ question }: PracticeStudioProps) {
                 {recorderState === "submitting" ? (
                   <>
                     <LoaderCircle className="h-5 w-5 animate-spin" />
-                    Analyzing
+                    Gemini Analyzing
                   </>
                 ) : (
                   <>
@@ -723,6 +866,48 @@ export function PracticeStudio({ question }: PracticeStudioProps) {
 
             <div className="grid gap-2 text-sm leading-6 text-[#6f675c]">
               <p>{status}</p>
+              {recorderState === "submitting" || assessmentDetails.length ? (
+                <div className="grid gap-3 rounded-[24px] border border-[#d9d6cf] bg-[#fffcf6] px-4 py-4 text-left sm:px-5">
+                  <div className="flex items-center justify-between gap-3 text-xs uppercase tracking-[0.22em] text-[#8d7557]">
+                    <span>{assessmentStageLabel}</span>
+                    <span>{getAssessmentProgress(assessmentStage)}%</span>
+                  </div>
+                  <div className="h-3 overflow-hidden rounded-full bg-[#efe9dc]">
+                    <div className="h-full rounded-full bg-[#101828] transition-all duration-700" style={{ width: `${getAssessmentProgress(assessmentStage)}%` }} />
+                  </div>
+                  {assessmentDetails.length ? (
+                    <div className="grid gap-2">
+                      {assessmentDetails.map((item) => (
+                        <div key={item.label} className="rounded-[18px] border border-black/6 bg-white px-4 py-3">
+                          <div className="flex items-center justify-between gap-3">
+                            <p className="text-sm font-medium text-[#101828]">{item.label}</p>
+                            <span className={`rounded-full px-2.5 py-1 text-[11px] font-medium ${getAssessmentTone(item.phase.status)}`}>
+                              {item.phase.status === "success"
+                                ? "成功"
+                                : item.phase.status === "fallback"
+                                  ? "已降级"
+                                  : item.phase.status === "failed"
+                                    ? "失败"
+                                    : "处理中"}
+                            </span>
+                          </div>
+                          <p className="mt-2 text-xs leading-6 text-[#5b5349]">{item.phase.message}</p>
+                          {item.phase.reason ? <p className="mt-2 text-xs leading-6 text-[#b42318]">原因：{item.phase.reason}</p> : null}
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                  {assessmentWarnings.length ? (
+                    <div className="grid gap-2">
+                      {assessmentWarnings.map((warning, index) => (
+                        <p key={`${warning}-${index}`} className="rounded-[18px] bg-[#fff4e8] px-4 py-3 text-xs leading-6 text-[#b54708]">
+                          {warning}
+                        </p>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
               {recorderState === "recording" ? (
                 <p className="font-medium text-[#b42318]">Recording Time: {liveDurationLabel}</p>
               ) : null}
