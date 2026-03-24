@@ -102,12 +102,13 @@ export function FullMockTest() {
 
   const resumeMock = searchParams.get("resumeMock") === "1";
   const resumeSessionId = searchParams.get("sessionId");
+  const promptCount = session?.prompts.length ?? 0;
   const currentPrompt = session && activeIndex >= 0 ? session.prompts[activeIndex] : null;
   const part1PromptCount = session?.prompts.filter((prompt) => prompt.part === "Part 1").length ?? 0;
   const completedCount = recordings.filter((item) => item.blob).length;
-  const allRecorded = Boolean(session) && completedCount === session.prompts.length;
+  const allRecorded = promptCount > 0 && completedCount === promptCount;
   const totalDurationSeconds = recordings.reduce((sum, item) => sum + item.durationSeconds, 0);
-  const progressPercent = !session || activeIndex < 0 ? 0 : ((activeIndex + 1) / session.prompts.length) * 100;
+  const progressPercent = promptCount === 0 || activeIndex < 0 ? 0 : ((activeIndex + 1) / promptCount) * 100;
   const usageLine = !user ? "未登录状态下可以完成整套录音，但生成正式模考报告前需要先登录。" : !usage ? "正在加载额度信息。" : usage.hasActiveMembership ? `会员主额度剩余 ${usage.membershipQuotaRemaining} 次，加量包剩余 ${usage.activeAddonCreditsRemaining} 次。` : `免费分析次数剩余 ${usage.freeTrialsRemaining} 次。`;
   const submissionRemainingSeconds = Math.max(0, DEFAULT_REPORT_GENERATION_SECONDS - submissionElapsedSeconds);
   const submissionEtaLabel =
