@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -21,7 +21,7 @@ type RecorderState = "idle" | "recording" | "ready" | "submitting";
 type AssessmentStage = "idle" | "transcribing" | "analyzing" | "finalizing";
 
 const scoreLabelMap = {
-  overall: { en: "Overall Band", zh: "总成绩" },
+  overall: { en: "Overall Band", zh: "总分" },
   fluency: { en: "Fluency", zh: "流利度" },
   lexical: { en: "Lexical", zh: "词汇" },
   grammar: { en: "Grammar", zh: "语法" },
@@ -241,6 +241,24 @@ function formatScore(score: number) {
   return Number.isInteger(score) ? String(score) : score.toFixed(1);
 }
 
+function getQuestionSectionLabel(question: DemoQuestion) {
+  const raw = question.sectionLabel ?? question.tags[0] ?? "Speaking";
+
+  if (raw === "Mainland Reused") {
+    return "大陆旧题";
+  }
+
+  if (raw === "Mainland New") {
+    return "大陆新题";
+  }
+
+  if (raw.includes("Non-mainland") || raw.includes("Non Mainland")) {
+    return "非大陆题";
+  }
+
+  return raw;
+}
+
 function getAssessmentTone(status: MockGenerationPhase["status"]) {
   if (status === "success") return "text-[#18794e] bg-[#e8f8ee]";
   if (status === "fallback") return "text-[#b54708] bg-[#fff4e8]";
@@ -366,7 +384,7 @@ export function PracticeStudio({ question }: PracticeStudioProps) {
     assessmentStage === "transcribing"
       ? "正在语音转文字"
       : assessmentStage === "analyzing"
-        ? "正在进行 Gemini 分析"
+        ? "正在进行分析"
         : assessmentStage === "finalizing"
           ? "正在整理分析结果"
           : "等待开始";
@@ -541,11 +559,11 @@ export function PracticeStudio({ question }: PracticeStudioProps) {
     setRecorderState("submitting");
     setAssessmentStage("transcribing");
     setAssessmentPhases({
-      transcription: { status: "pending", message: "等待服务器开始语音转文字" },
-      assessment: { status: "pending", message: "等待转写完成后开始 Gemini 分析" },
+      transcription: { status: "pending", message: "等待服务端开始语音转文字" },
+      assessment: { status: "pending", message: "等待转写完成后开始分析" },
     });
     setAssessmentWarnings([]);
-    setStatus("Gemini 正在分析你的回答，请稍候...");
+    setStatus("正在分析你的回答，请稍候...");
     setShowUpgradePrompt(false);
 
     if (assessmentStageTimerRef.current) {
@@ -554,7 +572,7 @@ export function PracticeStudio({ question }: PracticeStudioProps) {
     }
     assessmentStageTimerRef.current = window.setTimeout(() => {
       setAssessmentStage("analyzing");
-      setStatus("语音转文字完成，Gemini 正在分析当前回答...");
+      setStatus("语音转文字完成，正在分析当前回答...");
       setAssessmentPhases((current) =>
         current
           ? {
@@ -565,7 +583,7 @@ export function PracticeStudio({ question }: PracticeStudioProps) {
               },
               assessment: {
                 status: "pending",
-                message: "Gemini 正在分析当前回答",
+                message: "正在分析当前回答",
               },
             }
           : current,
@@ -645,18 +663,18 @@ export function PracticeStudio({ question }: PracticeStudioProps) {
             status: "failed",
             message: "服务端没有返回可识别的阶段数据",
             reason: response.ok
-              ? "接口返回了非 JSON 内容，通常表示云端还是旧版本，或服务端抛错后返回了 HTML。"
+              ? "接口返回了非 JSON 内容，通常表示云端仍是旧版本，或服务端报错后返回了 HTML。"
               : `HTTP ${response.status}${rawResponseText ? `: ${rawResponseText.slice(0, 180)}` : ""}`,
           },
           assessment: {
             status: "failed",
-            message: "Gemini 分析未开始",
+            message: "分析未开始",
             reason: "请先检查本地或云端是否已经部署最新的 /api/assessment 接口。",
           },
         });
         setStatus(
           response.ok
-            ? "服务端返回了旧格式或非 JSON 响应，请确认当前接口已升级到 Gemini 分阶段分析版本。"
+            ? "服务端返回了旧格式或非 JSON 响应，请确认当前接口已升级到新的分析阶段版本。"
             : `分析失败了，服务器返回 HTTP ${response.status}。`,
         );
         return;
@@ -677,7 +695,7 @@ export function PracticeStudio({ question }: PracticeStudioProps) {
     setStatus(
       payload.phases.assessment.status === "fallback"
         ? "分析已完成，但本次已自动切换为兜底结果。"
-        : "Gemini 分析完成，可以查看你的冲刺建议和表达升级。",
+        : "分析完成，可以查看你的冲刺建议和表达升级。",
     );
     await refreshUsage();
   };
@@ -733,7 +751,7 @@ export function PracticeStudio({ question }: PracticeStudioProps) {
         <div className="grid gap-6 rounded-[28px] border border-black/8 bg-white px-4 py-5 shadow-[0_24px_80px_rgba(16,24,40,0.08)] sm:gap-8 sm:rounded-[36px] sm:px-6 sm:py-8 lg:px-10">
           <div className="grid gap-5 text-center">
             <p className="text-xs font-semibold uppercase tracking-[0.38em] text-[#8d7557]">
-              {question.sectionLabel ?? question.tags[0] ?? "Speaking"}
+              {getQuestionSectionLabel(question)}
             </p>
             <h1 className="text-3xl font-semibold tracking-[-0.06em] text-[#101828] sm:text-5xl lg:text-6xl">
               {question.title}
@@ -787,7 +805,7 @@ export function PracticeStudio({ question }: PracticeStudioProps) {
                     <p className="text-sm font-medium uppercase tracking-[0.28em] text-[#8d7557]">You should say</p>
                     <div className="mt-4 grid gap-3 text-base leading-8 text-[#344054]">
                       {cuePoints.map((point) => (
-                        <p key={point}>• {point}</p>
+                        <p key={point}>- {point}</p>
                       ))}
                     </div>
                   </div>
@@ -845,7 +863,7 @@ export function PracticeStudio({ question }: PracticeStudioProps) {
                 {recorderState === "submitting" ? (
                   <>
                     <LoaderCircle className="h-5 w-5 animate-spin" />
-                    Gemini Analyzing
+                    Analyzing
                   </>
                 ) : (
                   <>
@@ -963,7 +981,7 @@ export function PracticeStudio({ question }: PracticeStudioProps) {
             <div className="rounded-[28px] border border-black/8 bg-white p-5 shadow-[0_18px_50px_rgba(16,24,40,0.06)] sm:rounded-[32px] sm:p-7">
               <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[#8d7557]">Next Band Gap</p>
               <h2 className="mt-3 text-2xl font-semibold tracking-[-0.04em] text-[#101828]">
-                距离下一个分数段，还差什么
+                距离下一档分数，还差什么？
               </h2>
               <p className="mt-4 max-w-4xl text-base leading-8 text-[#344054]">{result.targetBandGap}</p>
             </div>
@@ -1015,10 +1033,26 @@ export function PracticeStudio({ question }: PracticeStudioProps) {
               </div>
             </div>
 
+            <div className="rounded-[28px] border border-black/8 bg-white p-5 shadow-[0_18px_50px_rgba(16,24,40,0.06)] sm:rounded-[32px] sm:p-7">
+              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[#8d7557]">Answer Thinking</p>
+              <h2 className="mt-3 text-2xl font-semibold tracking-[-0.04em] text-[#101828]">答题思路</h2>
+              <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                {result.answerThinking.map((item, index) => (
+                  <div
+                    key={`${item}-${index}`}
+                    className="rounded-[24px] border border-black/8 bg-[#fffdf8] px-4 py-4 text-sm leading-7 text-[#344054]"
+                  >
+                    <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#8d7557]">Step {index + 1}</p>
+                    <p className="mt-2">{item}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
             <div className="grid gap-6 xl:grid-cols-3">
               <div className="rounded-[28px] border border-black/8 bg-white p-5 shadow-[0_18px_50px_rgba(16,24,40,0.06)] sm:rounded-[32px] sm:p-7">
                 <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[#8d7557]">7-Day Focus</p>
-                <h3 className="mt-3 text-xl font-semibold text-[#101828]">未来 7 天最该练什么</h3>
+                <h3 className="mt-3 text-xl font-semibold text-[#101828]">未来 7 天最该练什么？</h3>
                 <div className="mt-5 grid gap-3">
                   {result.weeklyFocus.map((item, index) => (
                     <p key={`${item}-${index}`} className="rounded-2xl bg-[#faf7f1] px-4 py-3 text-sm leading-7 text-[#344054]">
@@ -1030,7 +1064,7 @@ export function PracticeStudio({ question }: PracticeStudioProps) {
 
               <div className="rounded-[28px] border border-black/8 bg-white p-5 shadow-[0_18px_50px_rgba(16,24,40,0.06)] sm:rounded-[32px] sm:p-7">
                 <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[#8d7557]">15 Minutes</p>
-                <h3 className="mt-3 text-xl font-semibold text-[#101828]">每天练习 15 分钟做什么</h3>
+                <h3 className="mt-3 text-xl font-semibold text-[#101828]">每天练习 15 分钟做什么？</h3>
                 <div className="mt-5 grid gap-3">
                   {result.dailyFifteenPlan.map((item, index) => (
                     <p key={`${item}-${index}`} className="rounded-2xl bg-[#faf7f1] px-4 py-3 text-sm leading-7 text-[#344054]">
@@ -1042,7 +1076,7 @@ export function PracticeStudio({ question }: PracticeStudioProps) {
 
               <div className="rounded-[28px] border border-black/8 bg-white p-5 shadow-[0_18px_50px_rgba(16,24,40,0.06)] sm:rounded-[32px] sm:p-7">
                 <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[#8d7557]">Score Killers</p>
-                <h3 className="mt-3 text-xl font-semibold text-[#101828]">最影响分数的错误</h3>
+                <h3 className="mt-3 text-xl font-semibold text-[#101828]">最影响分数的错误？</h3>
                 <div className="mt-5 grid gap-3">
                   {result.scoreKillers.map((item, index) => (
                     <p key={`${item}-${index}`} className="rounded-2xl bg-[#fff4f2] px-4 py-3 text-sm leading-7 text-[#b42318]">
@@ -1151,3 +1185,4 @@ export function PracticeStudio({ question }: PracticeStudioProps) {
     </>
   );
 }
+

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import type { ReactNode } from "react";
 
 import { TextToSpeechButton } from "@/components/text-to-speech-button";
 import { getMockPromptReferenceAnswer } from "@/lib/mock-reference-answer";
@@ -177,7 +178,7 @@ function renderHighlightedTranscript(transcript: string, masteredPhrases: string
     (left, right) => left.start - right.start || left.end - right.end,
   );
 
-  const pieces: React.ReactNode[] = [];
+  const pieces: ReactNode[] = [];
   let cursor = 0;
 
   ranges.forEach((range, index) => {
@@ -213,13 +214,41 @@ function renderHighlightedTranscript(transcript: string, masteredPhrases: string
   return pieces;
 }
 
-function buildFallbackDetail(transcript: string) {
+function buildFallbackAnswerThinking(part: "Part 1" | "Part 2" | "Part 3") {
+  if (part === "Part 2") {
+    return [
+      "先用一句话点明你要讲的人、事、物或经历。",
+      "按时间或场景顺序交代 2 到 3 个关键信息。",
+      "重点展开一个细节、感受或转折，让内容更具体。",
+      "最后总结这段经历为什么重要，或它带来的影响。",
+    ];
+  }
+
+  if (part === "Part 3") {
+    return [
+      "先直接表明观点，避免一开始过于模糊。",
+      "给出一个最核心的理由，建立主线。",
+      "补一个例子、对比或结果影响，把论证说透。",
+      "最后回扣题目，用一句总结收尾。",
+    ];
+  }
+
+  return [
+    "先直接回答问题，给出最明确的第一反应。",
+    "补一个具体原因，让回答不只停留在简短结论。",
+    "再加一个个人经历、习惯或例子，把内容展开。",
+    "最后补一句感受或总结，让答案完整结束。",
+  ];
+}
+
+function buildFallbackDetail(transcript: string, part: "Part 1" | "Part 2" | "Part 3") {
   const cleaned = transcript.trim();
   return {
-    summary: cleaned ? "这道题暂时没有生成结构化点评，下面展示保留下来的原始转写内容。" : "这道题没有可用转写，因此没有生成逐题点评。",
+    summary: cleaned ? "这道题暂时没有生成结构化点评，下面先展示保留下来的原始转写内容。" : "这道题没有可用转写，因此还没有生成逐题点评。",
     score: 0,
-    strengths: cleaned ? ["已保留原始转写，可据此继续人工复盘。"] : [],
-    weaknesses: cleaned ? ["系统未生成可用的逐题分析，请稍后重新生成完整报告。"] : ["当前没有可用 transcript，无法判断具体问题。"],
+    answerThinking: buildFallbackAnswerThinking(part),
+    strengths: cleaned ? ["已保留原始转写，可以据此继续人工复盘。"] : [],
+    weaknesses: cleaned ? ["系统暂未生成可用的逐题分析，请稍后重新生成完整报告。"] : ["当前没有可用 transcript，无法判断具体问题。"],
     conclusion: cleaned ? "建议稍后重新生成完整报告，避免基于不完整分析做判断。" : "请优先重新提交录音并完成转写。",
     masteredPhrases: [],
     polishedVersion: "",
@@ -271,11 +300,12 @@ export function MockReportPromptPage({ sessionId, partSlug, promptId }: Props) {
   }
 
   const referenceAnswer = getMockPromptReferenceAnswer(prompt);
-  const fallbackDetail = buildFallbackDetail(transcript.transcript);
+  const fallbackDetail = buildFallbackDetail(transcript.transcript, prompt.part);
   const resolvedDetail = detail
     ? {
         ...detail,
         score: detail.score > 0 ? detail.score : fallbackDetail.score,
+        answerThinking: detail.answerThinking?.length ? detail.answerThinking : fallbackDetail.answerThinking,
         masteredPhrases: detail.masteredPhrases?.length ? detail.masteredPhrases : fallbackDetail.masteredPhrases,
         polishedVersion: detail.polishedVersion || fallbackDetail.polishedVersion,
         summary: detail.summary || fallbackDetail.summary,
@@ -335,32 +365,53 @@ export function MockReportPromptPage({ sessionId, partSlug, promptId }: Props) {
 
           <div className="mt-6 grid gap-5">
             <div>
+              <p className="text-sm font-medium text-[#101828]">答题思路</p>
+              <div className="mt-3 grid gap-3">
+                {resolvedDetail.answerThinking.map((line, index) => (
+                  <div
+                    key={`${resolvedDetail.id}-thinking-${index}`}
+                    className="rounded-2xl border border-black/8 bg-[#fffdf8] px-4 py-3 text-sm leading-7 text-[#344054]"
+                  >
+                    <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#8d7557]">Step {index + 1}</p>
+                    <p className="mt-2">{line}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div>
               <p className="text-sm font-medium text-[#101828]">表现好的地方</p>
               <div className="mt-3 grid gap-3">
-                {resolvedDetail.strengths.length ? resolvedDetail.strengths.map((line, index) => (
-                  <p key={`${resolvedDetail.id}-strength-${index}`} className="rounded-2xl bg-[#e8f8ee] px-4 py-3 text-sm leading-7 text-[#18794e]">
-                    {line}
-                  </p>
-                )) : <p className="text-sm leading-7 text-[#667085]">暂无可展示的亮点点评。</p>}
+                {resolvedDetail.strengths.length ? (
+                  resolvedDetail.strengths.map((line, index) => (
+                    <p key={`${resolvedDetail.id}-strength-${index}`} className="rounded-2xl bg-[#e8f8ee] px-4 py-3 text-sm leading-7 text-[#18794e]">
+                      {line}
+                    </p>
+                  ))
+                ) : (
+                  <p className="text-sm leading-7 text-[#667085]">暂无可展示的亮点评价。</p>
+                )}
               </div>
             </div>
 
             <div>
               <p className="text-sm font-medium text-[#101828]">主要问题</p>
               <div className="mt-3 grid gap-3">
-                {resolvedDetail.weaknesses.length ? resolvedDetail.weaknesses.map((line, index) => (
-                  <p key={`${resolvedDetail.id}-weakness-${index}`} className="rounded-2xl bg-[#fff4f2] px-4 py-3 text-sm leading-7 text-[#b42318]">
-                    {line}
-                  </p>
-                )) : <p className="text-sm leading-7 text-[#667085]">暂无可展示的问题定位。</p>}
+                {resolvedDetail.weaknesses.length ? (
+                  resolvedDetail.weaknesses.map((line, index) => (
+                    <p key={`${resolvedDetail.id}-weakness-${index}`} className="rounded-2xl bg-[#fff4f2] px-4 py-3 text-sm leading-7 text-[#b42318]">
+                      {line}
+                    </p>
+                  ))
+                ) : (
+                  <p className="text-sm leading-7 text-[#667085]">暂无可展示的问题定位。</p>
+                )}
               </div>
             </div>
 
             <div>
               <p className="text-sm font-medium text-[#101828]">结论</p>
-              <p className="mt-3 rounded-2xl bg-[#f7f3ea] px-4 py-4 text-sm leading-7 text-[#5b5349]">
-                {resolvedDetail.conclusion}
-              </p>
+              <p className="mt-3 rounded-2xl bg-[#f7f3ea] px-4 py-4 text-sm leading-7 text-[#5b5349]">{resolvedDetail.conclusion}</p>
             </div>
           </div>
         </div>
@@ -371,9 +422,7 @@ export function MockReportPromptPage({ sessionId, partSlug, promptId }: Props) {
               <p className="text-xs uppercase tracking-[0.24em] text-[#8d7557]">Band 8 Polished Version</p>
               <TextToSpeechButton text={resolvedDetail.polishedVersion || ""} />
             </div>
-            <p className="mt-4 text-base leading-8 text-[#101828]">
-              {resolvedDetail.polishedVersion || "Polished version is not available."}
-            </p>
+            <p className="mt-4 text-base leading-8 text-[#101828]">{resolvedDetail.polishedVersion || "Polished version is not available."}</p>
           </div>
 
           <div className="rounded-[32px] border border-black/8 bg-white p-7 shadow-[0_18px_50px_rgba(16,24,40,0.06)]">
@@ -381,9 +430,7 @@ export function MockReportPromptPage({ sessionId, partSlug, promptId }: Props) {
               <p className="text-xs uppercase tracking-[0.24em] text-[#8d7557]">Reference Answer</p>
               <TextToSpeechButton text={referenceAnswer} />
             </div>
-            <p className="mt-4 text-base leading-8 text-[#101828]">
-              {referenceAnswer || "Reference answer is not available yet."}
-            </p>
+            <p className="mt-4 text-base leading-8 text-[#101828]">{referenceAnswer || "Reference answer is not available yet."}</p>
           </div>
         </div>
       </section>

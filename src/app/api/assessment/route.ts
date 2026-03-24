@@ -35,7 +35,11 @@ export async function POST(request: Request) {
         code: "invalid_payload",
         error: "Missing audio or question id.",
         phases: {
-          transcription: { status: "failed", message: "语音转文字未开始", reason: "缺少录音或题目 ID。" },
+          transcription: {
+            status: "failed",
+            message: "语音转文字未开始",
+            reason: "缺少录音或题目 ID。",
+          },
           assessment: createPendingPhase("等待转写完成后再分析"),
         },
       },
@@ -52,7 +56,7 @@ export async function POST(request: Request) {
         error: "登录后才能使用真实 AI 评分和语音转文字。",
         phases: {
           transcription: createPendingPhase("等待登录后开始转写"),
-          assessment: createPendingPhase("等待登录后开始 AI 分析"),
+          assessment: createPendingPhase("等待登录后开始分析"),
         },
       },
       { status: 401 },
@@ -67,7 +71,11 @@ export async function POST(request: Request) {
         code: "question_not_found",
         error: "Question not found.",
         phases: {
-          transcription: { status: "failed", message: "语音转文字未开始", reason: "题目不存在。" },
+          transcription: {
+            status: "failed",
+            message: "语音转文字未开始",
+            reason: "题目不存在。",
+          },
           assessment: createPendingPhase("等待有效题目后再分析"),
         },
       },
@@ -85,7 +93,7 @@ export async function POST(request: Request) {
         {
           ok: false,
           code: "quota_exceeded",
-          error: "当前账号可用次数已用完，请前往 AI口语定价 页面联系开通。",
+          error: "当前账号可用次数已用完，请前往 AI 口语定价页面联系开通。",
           phases: {
             transcription: createPendingPhase("额度不足，未开始转写"),
             assessment: createPendingPhase("额度不足，未开始分析"),
@@ -121,7 +129,7 @@ export async function POST(request: Request) {
     let finalResult = demoResult;
     let assessmentPhase: PracticeAssessmentApiResponse["phases"]["assessment"] = {
       status: "fallback",
-      message: "Gemini 分析暂不可用，已切换为兜底结果",
+      message: "分析暂不可用，已切换为兜底结果",
       provider: "demo-fallback",
     };
 
@@ -143,13 +151,13 @@ export async function POST(request: Request) {
 
       assessmentPhase = {
         status: "success",
-        message: "Gemini 分析完成",
+        message: "分析完成",
         provider: "ai-scored",
       };
     } catch (error) {
       assessmentPhase = {
         status: "fallback",
-        message: "Gemini 分析失败，已切换为兜底结果",
+        message: "分析失败，已切换为兜底结果",
         provider: "demo-fallback",
         reason: error instanceof Error ? error.message : "Unknown AI error.",
       };
@@ -205,7 +213,7 @@ export async function POST(request: Request) {
           transcription: createPendingPhase("语音转文字未完成"),
           assessment: {
             status: "failed",
-            message: "Gemini 分析失败",
+            message: "分析失败",
             reason: error instanceof Error ? error.message : "Unknown server error.",
           },
         },

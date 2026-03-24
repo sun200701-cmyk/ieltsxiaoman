@@ -177,7 +177,7 @@ export function HomeExperience() {
             <div className="flex flex-col justify-center">
               <div className="inline-flex w-fit items-center gap-2 rounded-full border border-black/8 bg-white px-4 py-2 text-[11px] font-medium uppercase tracking-[0.24em] text-[#7f6c55]">
                 <Sparkles className="h-3.5 w-3.5" />
-                Gemini 3 定制化口语评分
+                AI 定制化口语评分
               </div>
 
               <h1 className="mt-5 max-w-[920px] text-[2.3rem] font-semibold tracking-[-0.08em] text-[#101828] sm:mt-6 sm:text-[4.4rem] lg:text-[5.4rem] lg:leading-[0.94]">
@@ -210,7 +210,7 @@ export function HomeExperience() {
                   <p className="mt-2 text-3xl font-semibold tracking-[-0.05em] text-[#101828]">Band 7.0</p>
                 </div>
                 <div className="rounded-full bg-[#101828] px-4 py-2 text-xs font-semibold tracking-[0.2em] text-white uppercase">
-                  Gemini 3
+                  AI
                 </div>
               </div>
 

@@ -1,4 +1,4 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 
@@ -32,3 +32,4 @@ export default async function PracticePage({ params }: PracticePageProps) {
     </main>
   );
 }
+

@@ -26,6 +26,8 @@ type GenerateMockSummaryAssessmentOptions = {
   promptBreakdowns: MockPromptBreakdown[];
 };
 
+const DEFAULT_PROMPT_ASSESSMENT_CONCURRENCY = 3;
+
 function clampBand(score: number) {
   const rounded = Math.round(Math.min(9, Math.max(0, score)) * 2) / 2;
   return Number(rounded.toFixed(1));
@@ -94,6 +96,33 @@ function sanitizePartBreakdowns(value: unknown): MockPartBreakdown[] {
     .filter((item) => item.topic && item.summary);
 }
 
+function buildFallbackAnswerThinking(part: MockPromptTranscript["part"]) {
+  if (part === "Part 2") {
+    return [
+      "先用一句话点明你要讲的人、事、物或经历。",
+      "按时间或场景顺序交代 2 到 3 个关键信息。",
+      "重点展开一个细节、感受或转折，让内容更具体。",
+      "最后总结这段经历为什么重要，或它带来的影响。",
+    ];
+  }
+
+  if (part === "Part 3") {
+    return [
+      "先直接表明观点，避免一开始过于模糊。",
+      "给出一个最核心的理由，建立主线。",
+      "补一个例子、对比或结果影响，把论证说透。",
+      "最后回扣题目，用一句总结收尾。",
+    ];
+  }
+
+  return [
+    "先直接回答问题，给出最明确的第一反应。",
+    "补一个具体原因，让回答不只停留在简短结论。",
+    "再加一个个人经历、习惯或例子，把内容展开。",
+    "最后补一句感受或总结，让答案完整结束。",
+  ];
+}
+
 function sanitizePromptBreakdown(item: Record<string, unknown>, transcript: MockPromptTranscript): MockPromptBreakdown {
   return {
     id: transcript.id,
@@ -102,6 +131,7 @@ function sanitizePromptBreakdown(item: Record<string, unknown>, transcript: Mock
     prompt: transcript.prompt,
     score: clampBand(Number(item.score ?? 0)),
     summary: typeof item.summary === "string" ? item.summary.trim() : "",
+    answerThinking: sanitizeStringArray(item.answerThinking, 4),
     strengths: sanitizeStringArray(item.strengths, 3),
     weaknesses: sanitizeStringArray(item.weaknesses, 3),
     conclusion: typeof item.conclusion === "string" ? item.conclusion.trim() : "",
@@ -120,9 +150,10 @@ function buildFallbackPromptBreakdown(transcript: MockPromptTranscript): MockPro
     prompt: transcript.prompt,
     score: 0,
     summary: cleaned
-      ? "这道题暂时没有生成完整结构化点评，当前先保留原始转写，便于继续人工复盘。"
-      : "这道题暂时没有可用转写，因此没有生成逐题点评。",
-    strengths: cleaned ? ["已保留原始转写，可继续检查是否切题、是否有展开。"] : [],
+      ? "这道题暂时没有生成完整的结构化点评，当前先保留原始转写，方便你继续人工复盘。"
+      : "这道题暂时没有可用转写，因此还不能生成逐题点评。",
+    answerThinking: buildFallbackAnswerThinking(transcript.part),
+    strengths: cleaned ? ["已保留原始转写，你可以先检查是否切题、是否有展开。"] : [],
     weaknesses: cleaned
       ? ["模型没有返回这道题的完整逐题分析，建议稍后重新生成完整报告。"]
       : ["当前没有可用 transcript，暂时无法判断这道题的具体问题。"],
@@ -151,8 +182,8 @@ function buildFallbackPartBreakdown(
     summary:
       promptScores.length > 0
         ? "这一部分的结构化总结不完整，当前先根据已返回的逐题结果保留概要。"
-        : "这一部分暂时没有生成完整结构化总结，建议查看逐题转写并稍后重新生成报告。",
-    strengths: promptScores.length > 0 ? ["已保留该部分的逐题结果，可先结合单题页面继续复盘。"] : [],
+        : "这一部分暂时没有生成完整总结，建议先查看逐题转写并稍后重新生成报告。",
+    strengths: promptScores.length > 0 ? ["该部分已有逐题结果，可以先结合单题页面继续复盘。"] : [],
     weaknesses: ["当前模型没有完整返回该部分总结，建议稍后重新生成完整报告。"],
   };
 }
@@ -186,7 +217,7 @@ function buildFallbackCriteria(payload: Record<string, unknown>): MockCriterionB
       criterion: "Pronunciation",
       scoreKey: "pronunciation",
       strength: "当前回答可用于继续训练语音语调。",
-      weakness: "仅基于转写做保守估计，建议结合录音继续复盘。",
+      weakness: "这里只能基于转写做保守估计，建议结合录音继续复盘。",
     },
   ];
 
@@ -218,6 +249,32 @@ function mergePartBreakdowns(
       promptBreakdowns.filter((item) => item.part === part),
     );
   });
+}
+
+async function mapWithConcurrency<TInput, TOutput>(
+  items: TInput[],
+  concurrency: number,
+  mapper: (item: TInput, index: number) => Promise<TOutput>,
+) {
+  const results = new Array<TOutput>(items.length);
+  const workerCount = Math.max(1, Math.min(concurrency, items.length));
+  let nextIndex = 0;
+
+  async function worker() {
+    while (true) {
+      const currentIndex = nextIndex;
+      nextIndex += 1;
+
+      if (currentIndex >= items.length) {
+        return;
+      }
+
+      results[currentIndex] = await mapper(items[currentIndex], currentIndex);
+    }
+  }
+
+  await Promise.all(Array.from({ length: workerCount }, () => worker()));
+  return results;
 }
 
 async function requestJsonFromModel(prompt: string) {
@@ -285,6 +342,7 @@ Return JSON with exactly this shape:
 {
   "score": number,
   "summary": string,
+  "answerThinking": string[],
   "strengths": string[],
   "weaknesses": string[],
   "conclusion": string,
@@ -294,6 +352,7 @@ Return JSON with exactly this shape:
 
 Requirements:
 - score must use 0.5 steps.
+- answerThinking: exactly 4 concise Chinese steps that give a complete answer plan from opening, key point, expansion/example, to ending.
 - strengths: 1 to 3 concise Chinese points.
 - weaknesses: 1 to 3 concise Chinese points.
 - summary and conclusion must be concise Chinese feedback.
@@ -386,6 +445,7 @@ export async function generateMockPromptAssessment(options: GenerateMockPromptAs
       ...sanitized,
       score: sanitized.score > 0 ? sanitized.score : fallback.score,
       summary: sanitized.summary || fallback.summary,
+      answerThinking: sanitized.answerThinking.length ? sanitized.answerThinking : fallback.answerThinking,
       strengths: sanitized.strengths.length ? sanitized.strengths : fallback.strengths,
       weaknesses: sanitized.weaknesses.length ? sanitized.weaknesses : fallback.weaknesses,
       conclusion: sanitized.conclusion || fallback.conclusion,
@@ -439,11 +499,11 @@ export async function generateMockSummaryAssessment(
 export async function generateMockAiAssessment(
   options: Omit<GenerateMockSummaryAssessmentOptions, "promptBreakdowns">,
 ): Promise<MockAssessmentResult> {
-  const promptBreakdowns: MockPromptBreakdown[] = [];
-
-  for (const transcript of options.transcripts) {
-    promptBreakdowns.push(await generateMockPromptAssessment({ transcript }));
-  }
+  const promptBreakdowns = await mapWithConcurrency(
+    options.transcripts,
+    DEFAULT_PROMPT_ASSESSMENT_CONCURRENCY,
+    async (transcript) => generateMockPromptAssessment({ transcript }),
+  );
 
   const summary = await generateMockSummaryAssessment({
     ...options,

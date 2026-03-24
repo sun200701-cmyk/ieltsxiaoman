@@ -59,6 +59,7 @@ export type AssessmentResult = {
   pronunciation: number;
   estimatedLevel: string;
   transcript: string;
+  answerThinking: string[];
   strengths: string[];
   nextSteps: string[];
   masteredPhrases: string[];
@@ -128,6 +129,7 @@ export type MockPromptBreakdown = {
   prompt: string;
   score: number;
   summary: string;
+  answerThinking: string[];
   strengths: string[];
   weaknesses: string[];
   conclusion: string;

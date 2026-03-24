@@ -33,6 +33,33 @@ function estimatePromptScore(item: MockPromptTranscript) {
   return clampBand(4.5 + Math.min(2.0, words / 35) * durationFactor);
 }
 
+function buildAnswerThinking(part: MockPromptTranscript["part"]) {
+  if (part === "Part 2") {
+    return [
+      "先用一句话点明你要讲的人、事、物或经历。",
+      "按时间或场景顺序交代 2 到 3 个关键信息。",
+      "重点展开一个细节、感受或转折，让内容更具体。",
+      "最后总结这段经历为什么重要，或它带来的影响。",
+    ];
+  }
+
+  if (part === "Part 3") {
+    return [
+      "先直接表明观点，避免一开始过于模糊。",
+      "给出一个最核心的理由，建立主线。",
+      "补一个例子、对比或结果影响，把论证说透。",
+      "最后回扣题目，用一句总结收尾。",
+    ];
+  }
+
+  return [
+    "先直接回答问题，给出最明确的第一反应。",
+    "补一个具体原因，让回答不只停留在简短结论。",
+    "再加一个个人经历、习惯或例子，把内容展开。",
+    "最后补一句感受或总结，让答案完整结束。",
+  ];
+}
+
 function buildPromptBreakdown(item: MockPromptTranscript): MockPromptBreakdown {
   const score = estimatePromptScore(item);
   const unavailable = hasUnavailableTranscript(item.transcript);
@@ -46,12 +73,11 @@ function buildPromptBreakdown(item: MockPromptTranscript): MockPromptBreakdown {
     summary: unavailable
       ? "这道题的录音转写失败，因此暂时没有生成完整 AI 点评。"
       : "这道题已保留原始转写，当前报告为系统兜底版，建议后续重新生成 AI 完整报告。",
-    strengths: unavailable
-      ? []
-      : ["已保留答题转写，可以先检查是否切题、是否有展开、是否有明显重复表达。"],
+    answerThinking: buildAnswerThinking(item.part),
+    strengths: unavailable ? [] : ["已保留答题转写，可以先检查是否切题、是否有展开、是否有明显重复表达。"],
     weaknesses: unavailable
       ? ["当前没有可用 transcript，无法完成这道题的结构化分析。"]
-      : ["当前版本未拿到完整 AI 逐题分析，细粒度点评和高分润色答案可能暂时缺失。"],
+      : ["当前版本还没有拿到完整 AI 逐题分析，细颗粒度点评和高分润色答案可能暂时缺失。"],
     conclusion: unavailable
       ? "建议优先检查录音和转写链路，再重新生成完整报告。"
       : "可以先基于转写人工复盘，稍后再重新生成完整 AI 报告。",
@@ -78,13 +104,9 @@ function buildPartBreakdown(
     summary: hasUnavailable
       ? "这一部分至少有一道题转写失败，因此当前只保留基础结果。"
       : "这一部分的 AI 总结暂时不可用，当前保留可继续查看的基础结果。",
-    strengths: scored.length
-      ? ["录音与题目结构已保留，可以先按部分维度复盘回答内容。"]
-      : [],
+    strengths: scored.length ? ["录音与题目结构已保留，可以先按部分维度复盘回答内容。"] : [],
     weaknesses: [
-      hasUnavailable
-        ? "转写链路不稳定会直接影响完整 mock report 的质量。"
-        : "当前没有拿到完整 AI part summary，建议稍后重新生成。",
+      hasUnavailable ? "转写链路不稳定会直接影响完整 mock report 的质量。" : "当前没有拿到完整 AI part summary，建议稍后重新生成。",
     ],
   };
 }

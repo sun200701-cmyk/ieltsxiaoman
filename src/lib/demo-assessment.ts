@@ -36,6 +36,33 @@ function buildPolishedVersion(transcript: string) {
     .replace(/\bbad\b/gi, "less effective");
 }
 
+function buildAnswerThinking(question: DemoQuestion) {
+  if (question.part === "Part 2") {
+    return [
+      "先用一句话点明你要讲的人、事、物或经历，别绕圈。",
+      "按照时间或场景顺序交代 2 到 3 个关键信息，让考官容易跟上。",
+      "重点展开一个最有画面感的细节或感受，把故事说具体。",
+      "最后总结这件事为什么重要，或它对你有什么影响。",
+    ];
+  }
+
+  if (question.part === "Part 3") {
+    return [
+      "先直接表明立场，不要一开始说得太模糊。",
+      "马上给出一个核心原因，说明你为什么这样看。",
+      "补一个社会现象、对比例子或结果影响，让观点更有深度。",
+      "最后回扣问题，用一句总结把观点收住。",
+    ];
+  }
+
+  return [
+    "先直接回答问题，给出最清楚的第一反应。",
+    "补充一个具体原因，让回答不只停留在 yes/no。",
+    "接着加一个个人经历、习惯或小例子，把内容说实。",
+    "最后补一句感受或补充说明，让整段回答更完整。",
+  ];
+}
+
 export async function transcribeWithTencentOrFallback(audio: File, question: DemoQuestion) {
   try {
     const transcript = await transcribeWithTencentAsr(audio);
@@ -77,6 +104,7 @@ export function generateDemoAssessment({
     pronunciation,
     estimatedLevel: overallBand >= 7 ? "具备稳定 Band 7 基础" : "距离稳定高分还有明显提升空间",
     transcript,
+    answerThinking: buildAnswerThinking(question),
     strengths: [
       "回答结构基本完整，能够围绕题目展开。",
       "内容里有个人信息和例子，听感不会太空泛。",

@@ -18,6 +18,7 @@ type AiAssessmentPayload = Pick<
   | "grammar"
   | "pronunciation"
   | "estimatedLevel"
+  | "answerThinking"
   | "strengths"
   | "nextSteps"
   | "masteredPhrases"
@@ -108,6 +109,7 @@ Return JSON with exactly this shape:
   "grammar": number,
   "pronunciation": number,
   "estimatedLevel": string,
+  "answerThinking": string[],
   "strengths": string[],
   "nextSteps": string[],
   "masteredPhrases": string[],
@@ -121,6 +123,7 @@ Return JSON with exactly this shape:
 }
 
 Additional requirements:
+- answerThinking: exactly 4 concise Chinese steps that give a complete answer plan from opening, key point, expansion/example, to ending
 - strengths: 2 concise Chinese points
 - nextSteps: 3 concise Chinese actions
 - masteredPhrases: 3 to 6 short English phrases actually used well by the candidate when possible
@@ -186,6 +189,17 @@ function sanitizeAiAssessment(payload: unknown): AiAssessmentPayload {
       typeof data.estimatedLevel === "string" && data.estimatedLevel.trim()
         ? data.estimatedLevel.trim()
         : "当前表达基础还在提升阶段",
+    answerThinking: (() => {
+      const steps = sanitizeStringArray(data.answerThinking, 4);
+      return steps.length
+        ? steps
+        : [
+            "先用一句话直接回应问题，亮明你的核心观点。",
+            "马上补一个最重要的原因，让回答有清晰主线。",
+            "继续展开一个具体细节、经历或例子，把内容说实。",
+            "最后用一句总结或感受收尾，让答案完整结束。",
+          ];
+    })(),
     strengths: sanitizeStringArray(data.strengths, 2),
     nextSteps: sanitizeStringArray(data.nextSteps, 3),
     masteredPhrases: sanitizeStringArray(data.masteredPhrases, 6),

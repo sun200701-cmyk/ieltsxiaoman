@@ -59,17 +59,16 @@ export function FullMockTest() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { accessToken, refreshUsage, usage, user } = useAuth();
-  const initialSession = useMemo(() => createFullMockTestSession(), []);
-  const examinerName = useMemo(() => EXAMINER_NAMES[Math.floor(Math.random() * EXAMINER_NAMES.length)] ?? EXAMINER_NAMES[0], []);
+  const [hasMounted, setHasMounted] = useState(false);
+  const [session, setSession] = useState<MockTestSession | null>(null);
+  const [recordings, setRecordings] = useState<PromptRecording[]>([]);
+  const [examinerName, setExaminerName] = useState(EXAMINER_NAMES[0] ?? "Emily Carter");
   const introSteps = useMemo<IntroductionStep[]>(() => [
     { line: `Good morning. My name is ${examinerName}.`, waitSeconds: 0 },
     { line: "Can you tell me your full name, please?", waitSeconds: 5 },
     { line: "Can I see your identification, please?", waitSeconds: 4 },
     { line: "Thank you. Now let's move on to Part 1.", waitSeconds: 0 },
   ], [examinerName]);
-
-  const [session, setSession] = useState(initialSession);
-  const [recordings, setRecordings] = useState<PromptRecording[]>(() => createEmptyRecordings(initialSession));
   const [activeIndex, setActiveIndex] = useState(-1);
   const [recorderState, setRecorderState] = useState<RecorderState>("idle");
   const [status, setStatus] = useState("点击“开始模考”后，系统会先完成考场开场环节，再按真实考试流程推进。");
@@ -103,12 +102,12 @@ export function FullMockTest() {
 
   const resumeMock = searchParams.get("resumeMock") === "1";
   const resumeSessionId = searchParams.get("sessionId");
-  const currentPrompt = activeIndex >= 0 ? session.prompts[activeIndex] : null;
-  const part1PromptCount = session.prompts.filter((prompt) => prompt.part === "Part 1").length;
+  const currentPrompt = session && activeIndex >= 0 ? session.prompts[activeIndex] : null;
+  const part1PromptCount = session?.prompts.filter((prompt) => prompt.part === "Part 1").length ?? 0;
   const completedCount = recordings.filter((item) => item.blob).length;
-  const allRecorded = completedCount === session.prompts.length;
+  const allRecorded = Boolean(session) && completedCount === session.prompts.length;
   const totalDurationSeconds = recordings.reduce((sum, item) => sum + item.durationSeconds, 0);
-  const progressPercent = activeIndex < 0 ? 0 : ((activeIndex + 1) / session.prompts.length) * 100;
+  const progressPercent = !session || activeIndex < 0 ? 0 : ((activeIndex + 1) / session.prompts.length) * 100;
   const usageLine = !user ? "未登录状态下可以完成整套录音，但生成正式模考报告前需要先登录。" : !usage ? "正在加载额度信息。" : usage.hasActiveMembership ? `会员主额度剩余 ${usage.membershipQuotaRemaining} 次，加量包剩余 ${usage.activeAddonCreditsRemaining} 次。` : `免费分析次数剩余 ${usage.freeTrialsRemaining} 次。`;
   const submissionRemainingSeconds = Math.max(0, DEFAULT_REPORT_GENERATION_SECONDS - submissionElapsedSeconds);
   const submissionEtaLabel =
@@ -119,6 +118,13 @@ export function FullMockTest() {
       : `预计生成时间约 ${Math.floor(DEFAULT_REPORT_GENERATION_SECONDS / 60)} 分钟`;
 
   useEffect(() => { recordingsRef.current = recordings; }, [recordings]);
+  useEffect(() => {
+    setHasMounted(true);
+    const nextSession = createFullMockTestSession();
+    setSession(nextSession);
+    setRecordings(createEmptyRecordings(nextSession));
+    setExaminerName(EXAMINER_NAMES[Math.floor(Math.random() * EXAMINER_NAMES.length)] ?? EXAMINER_NAMES[0] ?? "Emily Carter");
+  }, []);
   useEffect(() => () => {
     if (typeof window !== "undefined") window.speechSynthesis.cancel();
     if (elapsedTimerRef.current) window.clearInterval(elapsedTimerRef.current);
@@ -217,6 +223,7 @@ export function FullMockTest() {
   }, []);
 
   const openPrompt = useCallback((index: number) => {
+    if (!session) return;
     const prompt = session.prompts[index];
     if (!prompt) return;
     clearFlowTimers();
@@ -296,7 +303,7 @@ export function FullMockTest() {
   }, [clearFlowTimers, runIntroductionStep]);
 
   const startRecording = useCallback(async () => {
-    if (!currentPrompt || ["playing", "preparing", "submitting"].includes(recorderState)) return;
+    if (!session || !currentPrompt || ["playing", "preparing", "submitting"].includes(recorderState)) return;
     clearFlowTimers();
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -322,7 +329,7 @@ export function FullMockTest() {
       setRecorderState("ready");
       setStatus("麦克风权限未开启，请允许浏览器访问麦克风后重试。");
     }
-  }, [activeIndex, clearFlowTimers, currentPrompt, recorderState, session.prompts.length, updateRecording]);
+  }, [activeIndex, clearFlowTimers, currentPrompt, recorderState, session, updateRecording]);
 
   const stopRecording = useCallback(() => {
     if (recorderRef.current && recorderRef.current.state === "recording") {
@@ -333,6 +340,7 @@ export function FullMockTest() {
   }, []);
 
   const persistPendingSubmission = useCallback(async () => {
+    if (!session) return;
     const pendingRecordings = session.prompts.map((prompt, index) => ({ promptId: prompt.id, blob: recordings[index]?.blob, durationSeconds: recordings[index]?.durationSeconds ?? 0 })).filter((item): item is { promptId: string; blob: Blob; durationSeconds: number } => Boolean(item.blob));
     await savePendingMockSubmission(session.id, { session, recordings: pendingRecordings, totalDurationSeconds, createdAt: new Date().toISOString() });
   }, [recordings, session, totalDurationSeconds]);
@@ -354,6 +362,7 @@ export function FullMockTest() {
   ].filter((item): item is { label: string; phase: MockGenerationPhase } => Boolean(item));
 
   const handleSubmit = useCallback(async () => {
+    if (!session) return;
     if (!allRecorded) { setStatus("请先完成整套录音，再统一生成模考报告。"); return; }
     if (!user || !accessToken) {
       await persistPendingSubmission();
@@ -538,6 +547,18 @@ export function FullMockTest() {
     autoSubmittedRef.current = true;
     queueMicrotask(() => { void handleSubmit(); });
   }, [accessToken, allRecorded, handleSubmit, recorderState, restoring, resumeMock, resumeSessionId, user]);
+
+  if (!hasMounted || !session) {
+    return (
+      <section className="grid gap-6 rounded-[28px] border border-black/8 bg-white px-4 py-5 shadow-[0_24px_80px_rgba(16,24,40,0.08)] sm:gap-8 sm:rounded-[36px] sm:px-6 sm:py-8 lg:px-10">
+        <div className="text-center">
+          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[#8d7557]">Full Mock Test</p>
+          <h1 className="mt-6 text-3xl font-semibold tracking-[-0.06em] text-[#101828] sm:text-5xl lg:text-[4.8rem]">全真模考</h1>
+          <p className="mx-auto mt-5 max-w-3xl text-base leading-8 text-[#5b5349]">正在准备本次模考题目，请稍候。</p>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <>
