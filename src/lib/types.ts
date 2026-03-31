@@ -183,6 +183,7 @@ export type MockAssessmentApiResponse = {
   error?: string;
   result?: MockAssessmentResult;
   warnings?: string[];
+  taskId?: string;
   phases: {
     transcription: MockGenerationPhase;
     assessment: MockGenerationPhase;

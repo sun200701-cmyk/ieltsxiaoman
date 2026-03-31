@@ -1,6 +1,5 @@
 import { part2ReferenceAnswersById } from "@/lib/reference-answers";
-import { referenceAnswersByQuestionText } from "@/lib/reference-question-answers";
-import { requiredPart1AnswersByQuestionText } from "@/lib/reference-required-part1-answers";
+import { findReferenceAnswerByQuestionText } from "@/lib/reference-answer-lookup";
 import type { AssessmentResult, DemoQuestion } from "@/lib/types";
 
 type GenerateAiAssessmentOptions = {
@@ -39,14 +38,6 @@ type ChatCompletionResponse = {
   }>;
 };
 
-function normalizeQuestionKey(text: string) {
-  return text
-    .replace(/[?.!,:;()[\]"']/g, " ")
-    .replace(/\s+/g, " ")
-    .trim()
-    .toLowerCase();
-}
-
 function clampBand(score: number) {
   const rounded = Math.round(Math.min(9, Math.max(0, score)) * 2) / 2;
   return Number(rounded.toFixed(1));
@@ -57,17 +48,7 @@ function getReferenceAnswer(question: DemoQuestion, currentQuestionText: string)
     return part2ReferenceAnswersById[question.id] || question.sampleAnswer || "";
   }
 
-  const normalizedCurrent = normalizeQuestionKey(currentQuestionText);
-  const merged = {
-    ...referenceAnswersByQuestionText,
-    ...requiredPart1AnswersByQuestionText,
-  };
-
-  return (
-    merged[currentQuestionText] ||
-    Object.entries(merged).find(([key]) => normalizeQuestionKey(key) === normalizedCurrent)?.[1] ||
-    ""
-  );
+  return findReferenceAnswerByQuestionText(currentQuestionText);
 }
 
 function buildPrompt({

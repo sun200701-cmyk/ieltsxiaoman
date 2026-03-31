@@ -195,4 +195,188 @@ He has won medals and was a former national champion, although to be honest I'm 
 He's active on social media and posts lots of funny content. I once saw a clip of him dancing in his training outfit and pretending to be a cat while jumping over a bar. It was hilarious, but it also made me realise that being a serious athlete doesn't mean you have to be boring.
 
 I admire him because he seems hardworking and disciplined, but at the same time he clearly knows how to enjoy life and make other people laugh.`,
+  "latest-038": `I'd like to talk about my grandfather, who is the kind of person that always helps other people without making a big deal out of it.
+
+He is already in his seventies, but he is still full of energy and always notices when someone around him needs help. For example, if a neighbor is carrying something heavy, he will immediately go over and lend a hand. He also helps people in quieter ways, like fixing small things for them or giving them vegetables from his garden.
+
+I think he helps others so often because he genuinely enjoys being useful. He once told me that life feels more meaningful when you can make someone else's day a little easier.
+
+I really admire him for that. In a world where many people are busy with their own problems, he still chooses to be kind and generous every day.`,
+  "latest-040": `A time when I encouraged someone to do something they didn't want to do was when I persuaded one of my friends to join a public speaking contest at university.
+
+This happened last year. My friend is actually very smart and expressive in daily conversation, but she gets extremely nervous when she has to speak in front of a crowd. At first, she didn't want to sign up at all because she was scared of embarrassing herself.
+
+I encouraged her by telling her that the contest wasn't only about winning. I said it could be a good chance for her to challenge herself and become more confident. I also offered to help her practise after class, so she wouldn't have to deal with the pressure alone.
+
+In the end, she joined the contest. She didn't win first prize, but she did much better than she expected, and she later told me she was really glad I pushed her.`,
+  "latest-056": `I'd like to talk about pandas, which are probably the wild animals I want to learn more about the most.
+
+Of course, I already know some very basic things about them, like the fact that they mainly eat bamboo and that they are considered a national treasure in China. But I still feel there is so much more I don't understand, especially about how they survive in the wild and how conservation programs actually protect them.
+
+I first became interested in them when I visited a panda base as a child. They looked adorable and calm, but later I realised that behind that cute image, there is a whole story about habitat loss, breeding difficulties, and environmental protection.
+
+I want to learn more about pandas because they are not just cute animals. They also represent the relationship between humans and nature.`,
+  "latest-057": `I'd like to talk about one of my close friends, who is really good at singing.
+
+I met her in university, and at first I had no idea she was musical. One day, during a class activity, she sang a short part of a song, and everyone in the room just went silent for a second because her voice was so clear and expressive.
+
+She isn't only good at hitting the notes. What really makes her stand out is the emotion she puts into the music. Even when she sings something simple, it feels natural and moving rather than forced.
+
+I think she became good at singing because she has practised for years and genuinely loves music. She often listens carefully to different singers and tries to learn from them.
+
+I admire her a lot because talent is one thing, but turning it into something polished takes real effort.`,
+  "latest-059": `An occasion when I lost my way happened during a trip to Chongqing last year.
+
+I was travelling with a friend, and we wanted to find a famous riverside shopping mall that everyone had recommended online. At first, I thought it would be easy because I had the location on my phone, but Chongqing is a really complicated city with hills, bridges, and layered roads, so we somehow walked in the wrong direction for almost half an hour.
+
+At that moment I felt quite frustrated, because the weather was hot and we were already tired. We kept checking the map, but it somehow made us even more confused.
+
+In the end, we asked a local shop owner for help, and he explained the route very patiently. That experience taught me that digital maps are useful, but sometimes asking a real person is much more efficient.`,
+  "latest-061": `I'd like to talk about singing, which is a natural talent I would really like to improve.
+
+I wouldn't say I am completely bad at it, because I can follow the melody of a song, but I definitely don't have the kind of natural control that makes someone sound impressive. I have a few friends who can sing beautifully without much effort, and I always feel a little jealous of that.
+
+I want to improve this talent mainly because music is such an important part of my life. I enjoy listening to songs, going to concerts, and sometimes singing along when I am alone. So it would be nice if I could do it with more confidence and better technique.
+
+To improve, I think I would need to practise regularly, learn some breathing techniques, and maybe even take a few proper lessons.`,
+  "latest-062": `I'd like to talk about a really great dinner I had with my family during the Spring Festival.
+
+It wasn't held in a fancy restaurant. It was actually at my grandparents' home, but the atmosphere made it unforgettable. There were lots of dishes on the table, including fish, dumplings, braised pork, and several vegetable dishes, so it felt both abundant and festive.
+
+What made the dinner especially enjoyable was not only the food itself, but also the feeling of everyone gathering together. We were chatting, laughing, and sharing little updates about our lives. Since people are usually busy during the year, it felt rare and precious to sit together for that long.
+
+I enjoyed it so much because it reminded me that a great dinner is not only about taste. It is also about connection, warmth, and a sense of belonging.`,
+  "latest-063": `A long journey I had and would like to take again was a trip to Thailand with a couple of close friends.
+
+We spent several days there and visited night markets, cafes, temples, and local neighborhoods. It wasn't one of those luxury trips with a fixed schedule. Instead, it felt very free and relaxed, which is one reason I liked it so much.
+
+What I remember most clearly is the atmosphere. The mornings were slow, the street food was amazing, and even simple things like walking around in the evening felt exciting because everything was so different from my usual life.
+
+I would like to take that journey again because it gave me a real sense of escape. It was long enough for me to forget my daily stress and fully enjoy a new environment.`,
+  "latest-064": `I'd like to talk about a traditional story called Yu Gong Moves the Mountains, which I found very interesting when I first heard it as a child.
+
+It is about an old man named Yu Gong who decides to remove two huge mountains blocking the way in front of his home. Of course, the task sounds impossible, and people laugh at him. However, he believes that even if he cannot finish it in his lifetime, his children and future generations can continue the work.
+
+I think the story is interesting because it is simple but powerful. On the surface, it sounds unrealistic, but the real meaning is about determination and long-term effort.
+
+I still remember it because in Chinese culture, people often use this story to encourage persistence when facing huge challenges.`,
+  "latest-065": `A time when the electricity suddenly went off happened one summer evening when I was at home with my family.
+
+At that time, I was working on something on my laptop, and my parents were in the living room. Suddenly, everything went dark. The lights, the air conditioner, and even the Wi-Fi all stopped at the same time.
+
+At first, I felt really annoyed because it was hot and I was in the middle of something. But after a while, the whole situation became unexpectedly peaceful. Since none of us could use our devices properly, we just sat together near the window and started chatting.
+
+In the end, the power came back after about half an hour. What I remember most is not the inconvenience but the strange calmness of that short break from normal life.`,
+  "latest-066": `A time when someone apologized to me that I remember clearly was when one of my classmates missed an important group meeting and didn't tell us in advance.
+
+At that time, we were preparing for a presentation, so everyone was already stressed. Because she was absent, the rest of us had to reorganize the work at the last minute, and honestly I was quite irritated.
+
+The next day, she came to me and apologized sincerely. She explained that there had been a sudden family issue and that she had completely panicked. What mattered to me was that she didn't make excuses or pretend nothing had happened. She admitted the problem directly and said sorry in a very genuine way.
+
+I accepted the apology because I could see she really meant it. After that, we worked together normally again.`,
+  "latest-067": `A good habit my friend has and that I want to develop is consistent exercise.
+
+One of my close friends is incredibly disciplined when it comes to fitness. She doesn't do anything extreme, but she works out several times a week and treats it as a normal part of life rather than a temporary challenge.
+
+What impresses me is not only the fact that she exercises, but the way she stays consistent even when she is busy or tired. She once told me that she doesn't wait to feel motivated. She just follows the routine she has set for herself.
+
+I want to develop that habit because I know exercise is important for both physical and mental health, but I often struggle with consistency. Watching her makes me feel that discipline is something people can build little by little.`,
+  "latest-068": `An exciting activity I tried for the first time was surfing during a beach trip with my friends.
+
+Before that, I had only seen surfing in videos, so I thought it looked cool but also a little frightening. When I actually stood on the board for the first time, even though it was only for a few seconds, I felt an amazing rush of excitement.
+
+What made the experience memorable was the mix of fear and fun. I fell into the water many times, and sometimes I felt silly, but each small improvement made me want to try again.
+
+I think first-time experiences like that are exciting because they break your routine. They remind you that even as an adult, you can still feel curious, nervous, and thrilled all at once.`,
+  "latest-070": `An important old thing that my family has kept for a long time is a small wooden box in my grandparents' home.
+
+It isn't valuable in a financial sense, and if you looked at it quickly, you might think it was just an ordinary old object. However, my family has kept it for many years because it has emotional value. It used to belong to my grandfather, and he has always used it to store letters, old photos, and little objects connected to family memories.
+
+I think it is important because it represents continuity. Every time we open it, we are reminded of people, moments, and stories that might otherwise fade away.
+
+So even though it is physically very small, it carries a lot of meaning for my family.`,
+  "latest-071": `The first time I talked in a foreign language was when I had a short conversation in English with a tourist.
+
+I was still quite young at the time, probably in middle school, and my English ability was nowhere near fluent. I remember feeling extremely nervous because I was afraid I would say something wrong or fail to understand the other person.
+
+The tourist asked me for directions, and although my answer was simple and probably not very elegant, I managed to explain the route. What surprised me was that the conversation was actually much less scary than I had imagined.
+
+That experience mattered to me because it was the first time I realized language is not just something you study for exams. It is a real tool for communication.`,
+  "latest-073": `A time when I broke something happened when I accidentally dropped a glass cup at home.
+
+It wasn't anything extremely expensive, but it was still embarrassing because it happened right after my mother had told me to be careful. I was carrying the cup from the kitchen to the living room, and it just slipped out of my hand and shattered on the floor.
+
+At first, I was shocked by the noise, and then I immediately felt guilty because I knew I had been careless. My first reaction was to clean it up as quickly as possible before anyone stepped on the broken pieces.
+
+Although it was a small incident, I still remember it because it was such an ordinary but very human moment of carelessness.`,
+  "latest-074": `An area of science that I am interested in and want to learn more about is artificial intelligence.
+
+I first became interested in it because AI has become such a big part of modern life. People are using it in education, healthcare, business, and even creative work, so it feels impossible to ignore. At the same time, the topic is fascinating because it combines logic, data, and imagination.
+
+What I would like to learn more about is not only how AI models work technically, but also how they influence society. For example, I think questions about ethics, privacy, and employment are just as important as the technology itself.
+
+That is why this subject attracts me so much. It is both practical and intellectually exciting.`,
+  "latest-075": `A book I read that I found useful was Atomic Habits.
+
+I read it because many people online recommended it, and I was curious whether it was actually helpful or just another popular self-improvement book. Surprisingly, I found it quite practical.
+
+The main idea of the book is that small habits, when repeated consistently, can lead to significant long-term changes. What I liked most was that the author didn't just talk in a vague inspirational way. He also explained concrete methods, such as making good habits easier and bad habits harder.
+
+I found the book useful because it changed the way I think about discipline. It made me realize that improvement does not always depend on dramatic motivation.`,
+  "latest-077": `A toy I liked in my childhood was a box of building blocks.
+
+Compared with electronic toys, it was actually very simple, but I spent a lot of time with it. I used the blocks to build little houses, roads, and sometimes completely imaginary structures that made sense only in my own head.
+
+What I liked most was the freedom it gave me. There were no fixed rules, so I could create something different every time. In that sense, the toy was not only entertaining but also encouraged imagination.
+
+I still remember it fondly because it represents a stage of childhood when fun came from creating things rather than just consuming them.`,
+  "latest-078": `An important decision I made with the help of other people was choosing my university major.
+
+At that time, I had some ideas about what I liked, but I was not completely sure what path would suit me best in the long run. Because it felt like such a significant choice, I talked to several people, including my parents, teachers, and a few older friends.
+
+What helped me most was not that they made the decision for me, but that they offered different perspectives. My parents focused more on stability, while my teachers helped me think about my strengths and interests.
+
+In the end, I made the final choice myself, but their advice made the process much clearer and less stressful.`,
+  "latest-079": `A time when I waited for something special to happen was when I was waiting for my university admission result.
+
+That period felt incredibly long, even though in reality it was probably only a couple of weeks. I kept checking my phone and email again and again, even though I knew the result would not come faster just because I was anxious.
+
+What made it special was that I knew the outcome could influence the next stage of my life. It was not only about whether I got accepted, but also about what kind of future might open up afterwards.
+
+When the result finally arrived, I felt a huge sense of relief. Looking back, I remember the waiting itself almost more clearly than the result.`,
+  "latest-080": `A time when I received good service in a shop was when I bought a pair of shoes in a shopping mall.
+
+Normally I don't expect shop assistants to do much beyond answering basic questions, but that day the salesperson was unusually patient and helpful. She didn't pressure me to buy the most expensive pair. Instead, she asked about what I actually needed, such as comfort, daily use, and the kind of style I preferred.
+
+She also brought several sizes for me to try and gave practical suggestions instead of generic compliments. That made the whole experience feel relaxed and trustworthy.
+
+I remember the service so clearly because it felt like she was genuinely helping me rather than simply trying to make a sale.`,
+  "latest-081": `A natural place I would like to talk about is a mountain area I once visited during a short trip.
+
+What I remember most is the quietness there. Compared with city life, everything felt slower and calmer. The air was fresh, there were trees everywhere, and the view from higher up was incredibly open and peaceful.
+
+I liked that place not only because it was beautiful, but also because it made me feel mentally lighter. Sometimes when daily life becomes too noisy and stressful, being in nature reminds me that the world is much bigger than my immediate worries.
+
+That is why natural places are important to me. They are not just scenic locations. They also give people emotional space to breathe and reset.`,
+  "latest-085": `A movie I watched recently that disappointed me was a science-fiction film I had been looking forward to for quite a long time.
+
+I decided to watch it because the trailer looked amazing. The visual effects seemed impressive, and the online promotion made it sound like a very deep and emotional story. So naturally, my expectations became quite high.
+
+However, when I actually watched it, I found the plot surprisingly weak. The visuals were indeed beautiful, but the story felt messy and the characters were underdeveloped. I just couldn't connect with them emotionally.
+
+I felt disappointed mainly because the movie had so much potential. It looked like it was going to be memorable, but in the end it felt more stylish than meaningful.`,
+  "latest-086": `Something I can't live without, apart from a phone or computer, is definitely headphones.
+
+I use them almost every day, whether I am listening to music, watching videos, or simply trying to block out background noise in public places. They are especially important to me when I am commuting, because they help me create a private little space even when the environment around me is crowded or noisy.
+
+I think I rely on them so much because they have become part of my daily rhythm. They don't just provide entertainment. They also help me focus, relax, and sometimes even avoid unnecessary social interaction.
+
+So although headphones are small and ordinary, they make a huge difference to my everyday life.`,
+  "latest-087": `My favorite place in my house where I can relax is definitely my bedroom.
+
+It is not a huge or luxurious room, but it is the one place that feels completely mine. I sleep there, study there, and spend quiet time there when I want to be alone. Because of that, it has become much more than just a physical space.
+
+What I like most is the feeling of privacy and comfort. When I am stressed or tired, simply going back to my room helps me calm down. I can sit at my desk, listen to music, or just lie on the bed and do nothing for a while.
+
+That is why it is my favorite place. It gives me both rest and a sense of control over my own little world.`,
 };

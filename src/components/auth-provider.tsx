@@ -27,6 +27,15 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
+function isInvalidRefreshTokenError(error: unknown) {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  const message = error.message.toLowerCase();
+  return message.includes("invalid refresh token") || message.includes("refresh token not found");
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const configured = isSupabaseEnabled();
   const supabase = configured ? getSupabaseBrowserClient() : null;
@@ -64,36 +73,84 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     let isMounted = true;
+    const clearInvalidSession = async () => {
+      try {
+        await supabase.auth.signOut({ scope: "local" });
+      } catch {
+        // Ignore local cleanup errors and continue with a logged-out state.
+      }
 
-    supabase.auth.getSession().then(({ data }) => {
       if (!isMounted) {
         return;
       }
-      setSession(data.session);
-      setUser(data.session?.user ?? null);
-      if (data.session?.access_token) {
-        void fetch("/api/account/usage", {
-          headers: {
-            Authorization: `Bearer ${data.session.access_token}`,
-          },
-          cache: "no-store",
-        })
-          .then(async (response) => {
-            if (!response.ok || !isMounted) {
-              return;
-            }
 
-            const nextUsage = (await response.json()) as AccountUsage;
-            setUsage(nextUsage);
-          })
-          .catch(() => undefined);
-      }
+      setSession(null);
+      setUser(null);
+      setUsage(null);
       setLoading(false);
-    });
+    };
+
+    void supabase.auth.getSession()
+      .then(async ({ data, error }) => {
+        if (error && isInvalidRefreshTokenError(error)) {
+          await clearInvalidSession();
+          return;
+        }
+
+        if (!isMounted) {
+          return;
+        }
+        setSession(data.session);
+        setUser(data.session?.user ?? null);
+        if (data.session?.access_token) {
+          void fetch("/api/account/usage", {
+            headers: {
+              Authorization: `Bearer ${data.session.access_token}`,
+            },
+            cache: "no-store",
+          })
+            .then(async (response) => {
+              if (!response.ok || !isMounted) {
+                return;
+              }
+
+              const nextUsage = (await response.json()) as AccountUsage;
+              setUsage(nextUsage);
+            })
+            .catch(() => undefined);
+        }
+        setLoading(false);
+      })
+      .catch(async (error) => {
+        if (isInvalidRefreshTokenError(error)) {
+          await clearInvalidSession();
+          return;
+        }
+
+        if (!isMounted) {
+          return;
+        }
+
+        setLoading(false);
+      });
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+    } = supabase.auth.onAuthStateChange(async (_event, nextSession) => {
+      if (!nextSession) {
+        const {
+          data: { session: recoveredSession },
+          error,
+        } = await supabase.auth.getSession();
+
+        if (error && isInvalidRefreshTokenError(error)) {
+          await clearInvalidSession();
+          return;
+        }
+
+        nextSession = recoveredSession;
+      }
+
       setSession(nextSession);
       setUser(nextSession?.user ?? null);
       if (!nextSession) {

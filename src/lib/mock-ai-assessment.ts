@@ -27,6 +27,8 @@ type GenerateMockSummaryAssessmentOptions = {
 };
 
 const DEFAULT_PROMPT_ASSESSMENT_CONCURRENCY = 3;
+const MAX_PROMPT_ASSESSMENT_ATTEMPTS = 3;
+const MAX_SUMMARY_ASSESSMENT_ATTEMPTS = 3;
 
 function clampBand(score: number) {
   const rounded = Math.round(Math.min(9, Math.max(0, score)) * 2) / 2;
@@ -140,6 +142,17 @@ function sanitizePromptBreakdown(item: Record<string, unknown>, transcript: Mock
   };
 }
 
+function isPromptBreakdownComplete(value: MockPromptBreakdown) {
+  return Boolean(
+    value.summary.trim() &&
+    value.conclusion.trim() &&
+    value.answerThinking.length === 4 &&
+    value.strengths.length >= 1 &&
+    value.weaknesses.length >= 1 &&
+    value.polishedVersion.trim(),
+  );
+}
+
 function buildFallbackPromptBreakdown(transcript: MockPromptTranscript): MockPromptBreakdown {
   const cleaned = transcript.transcript.trim();
 
@@ -150,7 +163,7 @@ function buildFallbackPromptBreakdown(transcript: MockPromptTranscript): MockPro
     prompt: transcript.prompt,
     score: 0,
     summary: cleaned
-      ? "这道题暂时没有生成完整的结构化点评，当前先保留原始转写，方便你继续人工复盘。"
+      ? "这道题暂时没有生成完整的结构化点评，当前先保留原始转写，方便继续人工复盘。"
       : "这道题暂时没有可用转写，因此还不能生成逐题点评。",
     answerThinking: buildFallbackAnswerThinking(transcript.part),
     strengths: cleaned ? ["已保留原始转写，你可以先检查是否切题、是否有展开。"] : [],
@@ -199,7 +212,7 @@ function buildFallbackCriteria(payload: Record<string, unknown>): MockCriterionB
       criterion: "Fluency",
       scoreKey: "fluency",
       strength: "回答基本完成，具备继续稳定输出的基础。",
-      weakness: "如果想拿到更高分，需要继续提升展开深度与连续表达。",
+      weakness: "如果想拿到更高分，需要继续提升展开深度与连贯表达。",
     },
     {
       criterion: "Lexical",
@@ -228,6 +241,18 @@ function buildFallbackCriteria(payload: Record<string, unknown>): MockCriterionB
     weaknesses: [item.weakness],
     conclusion: `${item.criterion} 维度已保留基础评分，建议在完整报告恢复后继续查看更细分析。`,
   }));
+}
+
+function isSummaryComplete(
+  criteria: MockCriterionBreakdown[],
+  partBreakdowns: MockPartBreakdown[],
+  improvementPlan: string[],
+) {
+  const hasAllParts = (["Part 1", "Part 2", "Part 3"] as const).every((part) =>
+    partBreakdowns.some((item) => item.part === part && item.summary.trim()),
+  );
+
+  return criteria.length === 4 && hasAllParts && improvementPlan.length >= 5;
 }
 
 function mergePartBreakdowns(
@@ -435,65 +460,90 @@ Requirements:
 }
 
 export async function generateMockPromptAssessment(options: GenerateMockPromptAssessmentOptions): Promise<MockPromptBreakdown> {
-  try {
-    const payload = await requestJsonFromModel(buildPromptAssessmentPrompt(options.transcript));
-    const sanitized = sanitizePromptBreakdown(payload, options.transcript);
-    const fallback = buildFallbackPromptBreakdown(options.transcript);
+  const fallback = buildFallbackPromptBreakdown(options.transcript);
 
-    return {
-      ...fallback,
-      ...sanitized,
-      score: sanitized.score > 0 ? sanitized.score : fallback.score,
-      summary: sanitized.summary || fallback.summary,
-      answerThinking: sanitized.answerThinking.length ? sanitized.answerThinking : fallback.answerThinking,
-      strengths: sanitized.strengths.length ? sanitized.strengths : fallback.strengths,
-      weaknesses: sanitized.weaknesses.length ? sanitized.weaknesses : fallback.weaknesses,
-      conclusion: sanitized.conclusion || fallback.conclusion,
-      masteredPhrases: sanitized.masteredPhrases.length ? sanitized.masteredPhrases : fallback.masteredPhrases,
-      polishedVersion: sanitized.polishedVersion || fallback.polishedVersion,
-    };
-  } catch {
-    return buildFallbackPromptBreakdown(options.transcript);
+  for (let attempt = 1; attempt <= MAX_PROMPT_ASSESSMENT_ATTEMPTS; attempt += 1) {
+    try {
+      const payload = await requestJsonFromModel(buildPromptAssessmentPrompt(options.transcript));
+      const sanitized = sanitizePromptBreakdown(payload, options.transcript);
+
+      const merged = {
+        ...fallback,
+        ...sanitized,
+        score: sanitized.score > 0 ? sanitized.score : fallback.score,
+        summary: sanitized.summary || fallback.summary,
+        answerThinking: sanitized.answerThinking.length ? sanitized.answerThinking : fallback.answerThinking,
+        strengths: sanitized.strengths.length ? sanitized.strengths : fallback.strengths,
+        weaknesses: sanitized.weaknesses.length ? sanitized.weaknesses : fallback.weaknesses,
+        conclusion: sanitized.conclusion || fallback.conclusion,
+        masteredPhrases: sanitized.masteredPhrases.length ? sanitized.masteredPhrases : fallback.masteredPhrases,
+        polishedVersion: sanitized.polishedVersion || fallback.polishedVersion,
+      };
+
+      if (isPromptBreakdownComplete(merged) || attempt === MAX_PROMPT_ASSESSMENT_ATTEMPTS) {
+        return merged;
+      }
+    } catch {
+      if (attempt === MAX_PROMPT_ASSESSMENT_ATTEMPTS) {
+        return fallback;
+      }
+    }
   }
+
+  return fallback;
 }
 
 export async function generateMockSummaryAssessment(
   options: GenerateMockSummaryAssessmentOptions,
 ): Promise<Omit<MockAssessmentResult, "completedAt" | "transcripts" | "provider" | "transcriptProvider" | "promptBreakdowns">> {
-  const payload = await requestJsonFromModel(buildSummaryAssessmentPrompt(options));
-  const criteria = sanitizeCriterion(payload.criteria);
-  const partBreakdowns = mergePartBreakdowns(
-    options.transcripts,
-    sanitizePartBreakdowns(payload.partBreakdowns),
-    options.promptBreakdowns,
-  );
-  const improvementPlan = sanitizeStringArray(payload.improvementPlan, 5);
+  let latestResult: Omit<MockAssessmentResult, "completedAt" | "transcripts" | "provider" | "transcriptProvider" | "promptBreakdowns"> | null = null;
 
-  return {
-    predictedOverallBand: clampBand(Number(payload.predictedOverallBand ?? 0)),
-    fluency: clampBand(Number(payload.fluency ?? 0)),
-    lexical: clampBand(Number(payload.lexical ?? 0)),
-    grammar: clampBand(Number(payload.grammar ?? 0)),
-    pronunciation: clampBand(Number(payload.pronunciation ?? 0)),
-    totalDurationSeconds: options.totalDurationSeconds,
-    part1Theme: `${options.session.part1RequiredTheme} / ${options.session.part1GeneralTheme}`,
-    part2Topic: options.session.part2Topic,
-    part3Topic: options.session.part3Topic,
-    confidenceNote:
-      typeof payload.confidenceNote === "string" && payload.confidenceNote.trim()
-        ? payload.confidenceNote.trim()
-        : "本次分数基于完整全真模考的录音与转写生成，仅供练习参考。",
-    criteria: criteria.length === 4 ? criteria : buildFallbackCriteria(payload),
-    partBreakdowns,
-    improvementPlan:
-      improvementPlan.length >= 3
-        ? improvementPlan
-        : [
-            "先逐题复盘转写，确认每道题是否直接回应了问题。",
-            "优先补强回答展开，尽量形成“观点 + 原因 + 例子”的结构。",
-            "把高频口语搭配和连接表达整理成清单，做一轮跟读和替换练习。",
-          ],
-  };
+  for (let attempt = 1; attempt <= MAX_SUMMARY_ASSESSMENT_ATTEMPTS; attempt += 1) {
+    const payload = await requestJsonFromModel(buildSummaryAssessmentPrompt(options));
+    const criteria = sanitizeCriterion(payload.criteria);
+    const partBreakdowns = mergePartBreakdowns(
+      options.transcripts,
+      sanitizePartBreakdowns(payload.partBreakdowns),
+      options.promptBreakdowns,
+    );
+    const improvementPlan = sanitizeStringArray(payload.improvementPlan, 5);
+
+    latestResult = {
+      predictedOverallBand: clampBand(Number(payload.predictedOverallBand ?? 0)),
+      fluency: clampBand(Number(payload.fluency ?? 0)),
+      lexical: clampBand(Number(payload.lexical ?? 0)),
+      grammar: clampBand(Number(payload.grammar ?? 0)),
+      pronunciation: clampBand(Number(payload.pronunciation ?? 0)),
+      totalDurationSeconds: options.totalDurationSeconds,
+      part1Theme: `${options.session.part1RequiredTheme} / ${options.session.part1GeneralTheme}`,
+      part2Topic: options.session.part2Topic,
+      part3Topic: options.session.part3Topic,
+      confidenceNote:
+        typeof payload.confidenceNote === "string" && payload.confidenceNote.trim()
+          ? payload.confidenceNote.trim()
+          : "本次分数基于完整全真模考的录音与转写生成，仅供练习参考。",
+      criteria: criteria.length === 4 ? criteria : buildFallbackCriteria(payload),
+      partBreakdowns,
+      improvementPlan:
+        improvementPlan.length >= 3
+          ? improvementPlan
+          : [
+              "先逐题复盘转写，确认每道题是否直接回应了问题。",
+              "优先补强回答展开，尽量形成“观点 + 原因 + 例子”的结构。",
+              "把高频口语搭配和连接表达整理成清单，做一轮跟读和替换练习。",
+            ],
+    };
+
+    if (isSummaryComplete(latestResult.criteria, latestResult.partBreakdowns, latestResult.improvementPlan)) {
+      return latestResult;
+    }
+  }
+
+  if (!latestResult) {
+    throw new Error("Mock summary assessment did not produce a usable result.");
+  }
+
+  return latestResult;
 }
 
 export async function generateMockAiAssessment(

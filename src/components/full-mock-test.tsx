@@ -23,7 +23,7 @@ type SubmissionStage = "idle" | "uploading" | "transcribing" | "analyzing" | "fi
 type SubmissionPhases = MockAssessmentApiResponse["phases"];
 
 const EXAMINER_NAMES = ["Emily Carter", "Charlotte Hughes", "Sophie Mitchell", "Hannah Wilson", "Victoria Ellison", "Lucy Green", "Anna Scott"];
-const DEFAULT_REPORT_GENERATION_SECONDS = 180;
+const DEFAULT_REPORT_GENERATION_SECONDS = 240;
 const formatDuration = (s: number) => `${Math.floor(Math.max(0, s) / 60)}:${String(Math.max(0, s) % 60).padStart(2, "0")}`;
 const isPart2Prompt = (prompt: MockPrompt | null): prompt is MockPrompt => Boolean(prompt && prompt.part === "Part 2" && (prompt.prepSeconds ?? 0) > 0);
 const createEmptyRecordings = (session: MockTestSession): PromptRecording[] => session.prompts.map(() => ({ blob: null, audioUrl: null, durationSeconds: 0 }));
@@ -84,6 +84,7 @@ export function FullMockTest() {
   const [submissionPhases, setSubmissionPhases] = useState<SubmissionPhases | null>(null);
   const [submissionWarnings, setSubmissionWarnings] = useState<string[]>([]);
   const [submissionElapsedSeconds, setSubmissionElapsedSeconds] = useState(0);
+  const [reportTaskId, setReportTaskId] = useState<string | null>(null);
   const [, setTranscribedPayload] = useState<MockPromptTranscript[] | null>(null);
 
   const recorderRef = useRef<MediaRecorder | null>(null);
@@ -98,6 +99,7 @@ export function FullMockTest() {
   const submissionStartedAtRef = useRef<number | null>(null);
   const restoredRef = useRef(false);
   const autoSubmittedRef = useRef(false);
+  const reportPollAbortRef = useRef<AbortController | null>(null);
   const recordingsRef = useRef(recordings);
 
   const resumeMock = searchParams.get("resumeMock") === "1";
@@ -133,6 +135,7 @@ export function FullMockTest() {
     if (introTimerRef.current) window.clearInterval(introTimerRef.current);
     if (speechTimerRef.current) window.clearTimeout(speechTimerRef.current);
     if (submissionTimerRef.current) window.clearInterval(submissionTimerRef.current);
+    reportPollAbortRef.current?.abort();
     streamRef.current?.getTracks().forEach((t) => t.stop());
     recordingsRef.current.forEach((item) => item.audioUrl && URL.revokeObjectURL(item.audioUrl));
   }, []);
@@ -372,6 +375,7 @@ export function FullMockTest() {
     }
     setSubmissionPhases(null);
     setSubmissionWarnings([]);
+    setReportTaskId(null);
     setTranscribedPayload(null);
     setSubmissionStage("uploading");
     setSubmissionProgress(8);
@@ -446,7 +450,7 @@ export function FullMockTest() {
     setTranscribedPayload(transcriptionPayload.transcripts);
     setSubmissionStage("analyzing");
     setSubmissionProgress(getSubmissionStageWeight("analyzing"));
-    setStatus("录音转写已完成，正在逐题分析并汇总整套报告。");
+    setStatus("录音转写已完成，正在创建后台报告任务。");
 
     const reportResponse = await fetch("/api/mock-assessment/report", {
       method: "POST",
@@ -473,15 +477,12 @@ export function FullMockTest() {
     if (reportPayload?.phases) {
       setSubmissionPhases(reportPayload.phases);
       setSubmissionWarnings(reportPayload.warnings ?? transcriptionPayload.warnings ?? []);
-      const nextStage =
-        reportPayload.phases.assessment.status === "success" || reportPayload.phases.assessment.status === "fallback"
-          ? "finalizing"
-          : "analyzing";
+      const nextStage = reportPayload.result ? "finalizing" : "analyzing";
       setSubmissionStage(nextStage);
       setSubmissionProgress(getSubmissionStageWeight(nextStage));
     }
 
-    if (!reportResponse.ok || !reportPayload?.ok || !reportPayload.result) {
+    if (!reportResponse.ok || !reportPayload?.ok) {
       setRecorderState("ready");
       if (!reportPayload) {
         setSubmissionPhases({
@@ -507,18 +508,112 @@ export function FullMockTest() {
       return;
     }
 
-    const result = reportPayload.result;
-    setSubmissionProgress(100);
-    setSubmissionStage("finalizing");
-    saveMockReport(session.id, { session, result });
-    await deletePendingMockSubmission(session.id); await refreshUsage();
-    if (reportPayload.phases.transcription.status === "fallback" || reportPayload.phases.assessment.status === "fallback") {
-      setStatus("Mock Report 已生成，但其中一个阶段已降级为兜底结果。你仍可进入报告查看详情。");
-    } else {
-      setStatus("Mock Report 已生成，正在进入报告页面。");
+    if (reportPayload.result) {
+      const result = reportPayload.result;
+      setSubmissionProgress(100);
+      setSubmissionStage("finalizing");
+      saveMockReport(session.id, { session, result });
+      await deletePendingMockSubmission(session.id); await refreshUsage();
+      if (reportPayload.phases.transcription.status === "fallback" || reportPayload.phases.assessment.status === "fallback") {
+        setStatus("Mock Report 已生成，但其中一个阶段已降级为兜底结果。你仍可进入报告查看详情。");
+      } else {
+        setStatus("Mock Report 已生成，正在进入报告页面。");
+      }
+      router.push(`/mock/full/report/${session.id}`);
+      return;
     }
-    router.push(`/mock/full/report/${session.id}`);
+
+    const taskId = reportPayload.taskId || session.id;
+    setReportTaskId(taskId);
+    setStatus("后台报告任务已创建，正在轮询生成进度。");
   }, [accessToken, allRecorded, persistPendingSubmission, recordings, refreshUsage, router, session, totalDurationSeconds, user]);
+
+  useEffect(() => {
+    if (!reportTaskId || !accessToken || !session || recorderState !== "submitting") {
+      return;
+    }
+
+    const controller = new AbortController();
+    reportPollAbortRef.current?.abort();
+    reportPollAbortRef.current = controller;
+
+    const poll = async () => {
+      while (!controller.signal.aborted) {
+        try {
+          const response = await fetch(`/api/mock-assessment/report?taskId=${encodeURIComponent(reportTaskId)}`, {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+            },
+            signal: controller.signal,
+            cache: "no-store",
+          });
+
+          let payload: MockAssessmentApiResponse | null = null;
+          try {
+            payload = (await response.json()) as MockAssessmentApiResponse;
+          } catch {
+            payload = null;
+          }
+
+          if (!payload) {
+            setRecorderState("ready");
+            setStatus("查询后台报告任务失败，请稍后重试。");
+            return;
+          }
+
+          setSubmissionPhases(payload.phases);
+          setSubmissionWarnings(payload.warnings ?? []);
+
+          if (payload.result) {
+            setSubmissionProgress(100);
+            setSubmissionStage("finalizing");
+            saveMockReport(session.id, { session, result: payload.result });
+            await deletePendingMockSubmission(session.id);
+            await refreshUsage();
+            if (payload.phases.transcription.status === "fallback" || payload.phases.assessment.status === "fallback") {
+              setStatus("Mock Report 已生成，但其中一个阶段已降级为兜底结果。你仍可进入报告查看详情。");
+            } else {
+              setStatus("Mock Report 已生成，正在进入报告页面。");
+            }
+            controller.abort();
+            router.push(`/mock/full/report/${session.id}`);
+            return;
+          }
+
+          if (!payload.ok || payload.phases.assessment.status === "failed") {
+            setRecorderState("ready");
+            setStatus(payload.phases.assessment.reason || payload.error || "AI 报告生成失败，请稍后重试。");
+            controller.abort();
+            return;
+          }
+
+          setSubmissionStage("analyzing");
+          setSubmissionProgress((current) => Math.max(current, 82));
+          setStatus("AI 报告正在后台生成，请保持当前页面等待完成。");
+        } catch (error) {
+          if (controller.signal.aborted) {
+            return;
+          }
+
+          setRecorderState("ready");
+          setStatus(error instanceof Error ? error.message : "查询后台报告任务失败，请稍后重试。");
+          return;
+        }
+
+        await new Promise((resolve) => window.setTimeout(resolve, 3000));
+      }
+    };
+
+    void poll();
+
+    return () => {
+      controller.abort();
+      if (reportPollAbortRef.current === controller) {
+        reportPollAbortRef.current = null;
+      }
+    };
+  }, [accessToken, recorderState, refreshUsage, reportTaskId, router, session]);
 
   useEffect(() => {
     if (!resumeMock || !resumeSessionId || restoredRef.current) return;
