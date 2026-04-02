@@ -12,7 +12,7 @@ import {
 import type { Session, SupabaseClient, User } from "@supabase/supabase-js";
 
 import { getSupabaseBrowserClient, isSupabaseEnabled } from "@/lib/supabase/client";
-import type { AccountUsage } from "@/lib/types";
+import type { AccountUsage, RegularEnglishUsage } from "@/lib/types";
 
 type AuthContextValue = {
   configured: boolean;
@@ -21,8 +21,12 @@ type AuthContextValue = {
   user: User | null;
   accessToken: string | null;
   usage: AccountUsage | null;
+  regularEnglishUsage: RegularEnglishUsage | null;
   loading: boolean;
   refreshUsage: () => Promise<void>;
+  refreshRegularEnglishUsage: () => Promise<void>;
+  completeProfileSetupLocally: () => void;
+  clearAuthStateLocally: () => void;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -42,30 +46,72 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [usage, setUsage] = useState<AccountUsage | null>(null);
+  const [regularEnglishUsage, setRegularEnglishUsage] = useState<RegularEnglishUsage | null>(null);
   const [loading, setLoading] = useState(configured);
 
   const accessToken = session?.access_token ?? null;
 
+  const loadUsage = useCallback(
+    async (path: string) => {
+      if (!configured || !accessToken) {
+        return null;
+      }
+
+      const response = await fetch(path, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+        cache: "no-store",
+      });
+
+      if (!response.ok) {
+        return null;
+      }
+
+      return response.json();
+    },
+    [accessToken, configured],
+  );
+
   const refreshUsage = useCallback(async () => {
-    if (!configured || !accessToken) {
-      return;
-    }
-
-    const response = await fetch("/api/account/usage", {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-      cache: "no-store",
-    });
-
-    if (!response.ok) {
+    const nextUsage = (await loadUsage("/api/account/usage")) as AccountUsage | null;
+    if (!nextUsage) {
       setUsage(null);
       return;
     }
 
-    const nextUsage = (await response.json()) as AccountUsage;
     setUsage(nextUsage);
-  }, [accessToken, configured]);
+  }, [loadUsage]);
+
+  const refreshRegularEnglishUsage = useCallback(async () => {
+    const nextUsage = (await loadUsage("/api/account/regular-english-usage")) as RegularEnglishUsage | null;
+    if (!nextUsage) {
+      setRegularEnglishUsage(null);
+      return;
+    }
+
+    setRegularEnglishUsage(nextUsage);
+  }, [loadUsage]);
+
+  const completeProfileSetupLocally = useCallback(() => {
+    setUsage((current) =>
+      current
+        ? {
+            ...current,
+            passwordSet: true,
+            requiresProfileSetup: false,
+          }
+        : current,
+    );
+  }, []);
+
+  const clearAuthStateLocally = useCallback(() => {
+    setSession(null);
+    setUser(null);
+    setUsage(null);
+    setRegularEnglishUsage(null);
+    setLoading(false);
+  }, []);
 
   useEffect(() => {
     if (!supabase) {
@@ -87,6 +133,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(null);
       setUser(null);
       setUsage(null);
+      setRegularEnglishUsage(null);
       setLoading(false);
     };
 
@@ -103,19 +150,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setSession(data.session);
         setUser(data.session?.user ?? null);
         if (data.session?.access_token) {
-          void fetch("/api/account/usage", {
-            headers: {
-              Authorization: `Bearer ${data.session.access_token}`,
-            },
-            cache: "no-store",
-          })
-            .then(async (response) => {
-              if (!response.ok || !isMounted) {
+          void Promise.all([
+            fetch("/api/account/usage", {
+              headers: {
+                Authorization: `Bearer ${data.session.access_token}`,
+              },
+              cache: "no-store",
+            }),
+            fetch("/api/account/regular-english-usage", {
+              headers: {
+                Authorization: `Bearer ${data.session.access_token}`,
+              },
+              cache: "no-store",
+            }),
+          ])
+            .then(async ([usageResponse, regularEnglishUsageResponse]) => {
+              if (!isMounted) {
                 return;
               }
 
-              const nextUsage = (await response.json()) as AccountUsage;
-              setUsage(nextUsage);
+              if (usageResponse.ok) {
+                const nextUsage = (await usageResponse.json()) as AccountUsage;
+                setUsage(nextUsage);
+              }
+
+              if (regularEnglishUsageResponse.ok) {
+                const nextRegularEnglishUsage = (await regularEnglishUsageResponse.json()) as RegularEnglishUsage;
+                setRegularEnglishUsage(nextRegularEnglishUsage);
+              }
             })
             .catch(() => undefined);
         }
@@ -155,20 +217,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(nextSession?.user ?? null);
       if (!nextSession) {
         setUsage(null);
+        setRegularEnglishUsage(null);
       } else {
-        void fetch("/api/account/usage", {
-          headers: {
-            Authorization: `Bearer ${nextSession.access_token}`,
-          },
-          cache: "no-store",
-        })
-          .then(async (response) => {
-            if (!response.ok) {
-              return;
+        void Promise.all([
+          fetch("/api/account/usage", {
+            headers: {
+              Authorization: `Bearer ${nextSession.access_token}`,
+            },
+            cache: "no-store",
+          }),
+          fetch("/api/account/regular-english-usage", {
+            headers: {
+              Authorization: `Bearer ${nextSession.access_token}`,
+            },
+            cache: "no-store",
+          }),
+        ])
+          .then(async ([usageResponse, regularEnglishUsageResponse]) => {
+            if (usageResponse.ok) {
+              const nextUsage = (await usageResponse.json()) as AccountUsage;
+              setUsage(nextUsage);
+            } else {
+              setUsage(null);
             }
 
-            const nextUsage = (await response.json()) as AccountUsage;
-            setUsage(nextUsage);
+            if (regularEnglishUsageResponse.ok) {
+              const nextRegularEnglishUsage = (await regularEnglishUsageResponse.json()) as RegularEnglishUsage;
+              setRegularEnglishUsage(nextRegularEnglishUsage);
+            } else {
+              setRegularEnglishUsage(null);
+            }
           })
           .catch(() => undefined);
       }
@@ -189,10 +267,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       accessToken,
       usage,
+      regularEnglishUsage,
       loading,
       refreshUsage,
+      refreshRegularEnglishUsage,
+      completeProfileSetupLocally,
+      clearAuthStateLocally,
     }),
-    [accessToken, configured, loading, refreshUsage, session, supabase, usage, user],
+    [
+      accessToken,
+      clearAuthStateLocally,
+      completeProfileSetupLocally,
+      configured,
+      loading,
+      refreshRegularEnglishUsage,
+      refreshUsage,
+      regularEnglishUsage,
+      session,
+      supabase,
+      usage,
+      user,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

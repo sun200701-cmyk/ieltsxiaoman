@@ -51,6 +51,16 @@ export type AccountUsage = {
   requiresProfileSetup: boolean;
 };
 
+export type RegularEnglishUsage = {
+  userId: string;
+  freeTrialsTotal: number;
+  freeTrialsUsed: number;
+  freeTrialsRemaining: number;
+  usageMonth: string;
+  hasUnlimitedAccess: boolean;
+  hasAvailableAnalysis: boolean;
+};
+
 export type AssessmentResult = {
   overallBand: number;
   fluency: number;

@@ -20,18 +20,18 @@ const navItems: NavItem[] = [
     active: (pathname) => pathname === "/",
   },
   {
+    href: "/regular-english",
+    label: "口语素养",
+    active: (pathname) => pathname.startsWith("/regular-english"),
+  },
+  {
     href: "/speaking-practice",
-    label: "\u53e3\u8bed\u7ec3\u4e60",
+    label: "\u96c5\u601d\u53e3\u8bed",
     active: (pathname) =>
       pathname.startsWith("/speaking-practice") ||
       pathname.startsWith("/practice") ||
       pathname.startsWith("/question-bank") ||
       pathname.startsWith("/mock"),
-  },
-  {
-    href: "/courses",
-    label: "\u5f55\u64ad\u8bfe",
-    active: (pathname) => pathname.startsWith("/courses"),
   },
   {
     href: "/me/pricing",
@@ -42,10 +42,10 @@ const navItems: NavItem[] = [
 
 function getLinkClass(active: boolean) {
   return [
-    "inline-flex min-h-12 items-center justify-center rounded-full border px-5 py-2.5 text-sm font-medium transition whitespace-nowrap",
+    "inline-flex min-h-12 items-center justify-center rounded-full border px-5 py-2.5 text-sm font-medium whitespace-nowrap transition-all duration-300 ease-out",
     active
-      ? "border-black/12 bg-[#f1eadf] text-[#101828] shadow-[0_10px_24px_rgba(16,24,40,0.08)]"
-      : "border-transparent bg-transparent text-[#4f463d] hover:border-black/8 hover:bg-[#fffaf2] hover:text-[#101828]",
+      ? "translate-y-[-1px] border-black/12 bg-[#f1eadf] text-[#101828] shadow-[0_10px_24px_rgba(16,24,40,0.08)]"
+      : "border-transparent bg-transparent text-[#4f463d] hover:translate-y-[-1px] hover:border-black/8 hover:bg-[#fffaf2] hover:text-[#101828]",
   ].join(" ");
 }
 
@@ -98,14 +98,21 @@ export function SiteHeader() {
           aria-label={menuOpen ? "Close navigation menu" : "Open navigation menu"}
           aria-expanded={menuOpen}
           onClick={() => setMenuOpen((current) => !current)}
-          className="ml-auto inline-flex h-12 w-12 items-center justify-center rounded-full border border-black/8 bg-[#fffdf8] text-[#101828] transition hover:bg-white md:hidden"
+          className="ml-auto inline-flex h-12 w-12 items-center justify-center rounded-full border border-black/8 bg-[#fffdf8] text-[#101828] transition-all duration-300 ease-out hover:scale-[1.02] hover:bg-white md:hidden"
         >
           {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
         </button>
       </div>
 
-      {menuOpen ? (
-        <div className="border-t border-black/8 bg-[rgba(251,248,241,0.96)] px-4 py-4 md:hidden">
+      <div
+        aria-hidden={!menuOpen}
+        className={`grid overflow-hidden bg-[rgba(251,248,241,0.96)] px-4 transition-all duration-300 ease-out md:hidden ${
+          menuOpen
+            ? "grid-rows-[1fr] border-t border-black/8 py-4 opacity-100"
+            : "pointer-events-none grid-rows-[0fr] border-t border-transparent py-0 opacity-0"
+        }`}
+      >
+        <div className="min-h-0">
           <nav className="mx-auto grid w-full max-w-[1480px] gap-2">
             {navItems.map((item) => {
               const active = item.active(pathname);
@@ -134,7 +141,7 @@ export function SiteHeader() {
             </Link>
           </nav>
         </div>
-      ) : null}
+      </div>
     </header>
   );
 }

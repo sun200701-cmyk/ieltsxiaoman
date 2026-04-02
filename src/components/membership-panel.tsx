@@ -15,14 +15,20 @@ function formatDate(date: string | null) {
 }
 
 export function MembershipPanel() {
-  const { usage } = useAuth();
+  const { regularEnglishUsage, usage } = useAuth();
   const activePackPreview = usage?.addonPacks.find((pack) => pack.isActive) ?? null;
 
   const currentPlanLabel = usage?.hasActiveMembership
     ? usage.membershipPlan === "ultra"
-      ? "Ultra 会员有效中"
-      : "Pro 会员有效中"
+      ? "IELTS ULTRA 会员有效中"
+      : "IELTS PRO 会员有效中"
     : "当前未开通会员";
+
+  const regularEnglishRemainingLabel = !regularEnglishUsage
+    ? "未加载"
+    : regularEnglishUsage.hasUnlimitedAccess
+      ? "无限次数"
+      : String(regularEnglishUsage.freeTrialsRemaining);
 
   return (
     <section className="grid gap-4">
@@ -30,7 +36,7 @@ export function MembershipPanel() {
         <div>
           <h2 className="text-2xl font-semibold tracking-[-0.03em] text-[#101828]">会员</h2>
           <p className="mt-2 text-sm text-[#475467]">
-            Free 用户可体验 5 次题库模考分析。Pro、Ultra 和加量包均为 30 天有效，适合不同强度的备考节奏。
+            口语素养会员适合长期日常英语训练；IELTS PRO、IELTS ULTRA 和 IELTS 加量包适合不同强度的雅思备考节奏。
           </p>
         </div>
         <Link href="/me/pricing" className="ghost-button">
@@ -46,22 +52,30 @@ export function MembershipPanel() {
           </div>
 
           <div className="grid gap-3 text-sm leading-7 text-[#344054]">
+            <p>
+              口语素养会员：<span className="line-through text-[#98a2b3]">原价 39.9</span>
+              <span className="ml-2 font-semibold text-[#101828]">限时优惠 9.9</span> / 1 个月 / 不限次数
+            </p>
             <p>Free：5 次题库模考分析机会，不支持生成全真模考报告。</p>
             <p>
-              Pro：<span className="line-through text-[#98a2b3]">原价 299</span>
+              IELTS PRO：<span className="line-through text-[#98a2b3]">原价 299</span>
               <span className="ml-2 font-semibold text-[#101828]">限时优惠 99</span> / 30 天 / 300 次
             </p>
             <p>
-              Ultra：<span className="line-through text-[#98a2b3]">原价 899</span>
+              IELTS ULTRA：<span className="line-through text-[#98a2b3]">原价 899</span>
               <span className="ml-2 font-semibold text-[#101828]">限时优惠 199</span> / 30 天 / 1000 次
             </p>
             <p>
-              加量包：<span className="line-through text-[#98a2b3]">原价 279</span>
+              IELTS 加量包：<span className="line-through text-[#98a2b3]">原价 279</span>
               <span className="ml-2 font-semibold text-[#101828]">限时优惠 79</span> / 30 天 / 200 次
             </p>
           </div>
 
           <div className="grid gap-3 rounded-[20px] bg-[#f7f9fc] p-5 text-sm text-[#475467]">
+            <p>
+              口语素养剩余次数：
+              <span className="ml-2 font-semibold text-[#101828]">{regularEnglishRemainingLabel}</span>
+            </p>
             <p>
               免费剩余次数：
               <span className="ml-2 font-semibold text-[#101828]">{usage?.freeTrialsRemaining ?? 0}</span>
@@ -77,7 +91,7 @@ export function MembershipPanel() {
             <p>
               当前状态：
               <span className="ml-2 font-semibold text-[#101828]">
-                {usage?.hasActiveMembership ? (usage.membershipPlan === "ultra" ? "Ultra" : "Pro") : "Free"}
+                {usage?.hasActiveMembership ? (usage.membershipPlan === "ultra" ? "IELTS ULTRA" : "IELTS PRO") : "Free"}
               </span>
             </p>
             {usage?.membershipExpiresAt ? (
@@ -99,6 +113,7 @@ export function MembershipPanel() {
             <div className="mt-3 grid gap-2">
               <p>1. 全真模考：按你在整套模考里实际回答的题目数量扣次数。</p>
               <p>2. 题库模考：每进行一次单题分析，消耗 1 次次数。</p>
+              <p>3. 口语素养模块默认每月 10 次；如果已开通口语素养会员，则显示为无限次数。</p>
             </div>
           </div>
         </div>

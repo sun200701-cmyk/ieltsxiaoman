@@ -4,67 +4,67 @@ import { ArrowLeft, Crown, Sparkles, Zap } from "lucide-react";
 
 const plans = [
   {
-    title: "Free",
-    subtitle: "适合先体验题库模考",
-    originalPrice: null,
-    salePrice: "¥0",
-    detail: "注册即送 5 次",
-    buttonLabel: "免费体验",
-    accent: "bg-white",
-    icon: Zap,
+    title: "口语素养会员",
+    subtitle: "适合日常英语口语表达与长期素养提升",
+    originalPrice: "原价 ￥39.9",
+    salePrice: "限时 ￥9.9",
+    detail: "1 个月 / 不限次数",
+    buttonLabel: "联系客服开通",
+    accent: "bg-white ring-2 ring-[#101828]/10",
+    icon: Sparkles,
     features: [
-      "5 次 AI 题库模考分析机会",
-      "支持按题库逐题或选题练习",
-      "可查看单题评分、分析与参考答案",
-      "全真模考仅可体验答题，无法生成正式报告",
+      "仅针对口语素养模块，不限分析次数",
+      "支持按分类随机抽题并直接进入录音评分",
+      "沿用与雅思口语相同的 AI 转写与分析逻辑",
+      "适合日常英语表达、校园口语与长期练习",
     ],
   },
   {
-    title: "Pro",
+    title: "IELTS PRO",
     subtitle: "适合高频刷题和稳定训练",
-    originalPrice: "原价 ¥299",
-    salePrice: "限时 ¥99",
+    originalPrice: "原价 ￥299",
+    salePrice: "限时 ￥99",
     detail: "30 天 / 300 次",
     buttonLabel: "联系客服开通",
     accent: "bg-white",
     icon: Crown,
     features: [
-      "30 天有效，包含 300 次 AI 次数",
+      "30 天有效，包含 300 次 IELTS AI 次数",
       "支持题库模考与全真模考正式报告",
-      "次数用完后可继续购买加量包",
+      "次数用完后可继续购买 IELTS 加量包",
       "适合日常稳步备考",
     ],
   },
   {
-    title: "Ultra",
+    title: "IELTS ULTRA",
     subtitle: "适合冲刺期密集训练",
-    originalPrice: "原价 ¥899",
-    salePrice: "限时 ¥199",
+    originalPrice: "原价 ￥899",
+    salePrice: "限时 ￥199",
     detail: "30 天 / 1000 次",
     buttonLabel: "联系客服开通",
-    accent: "bg-white ring-2 ring-[#101828]/10",
+    accent: "bg-white",
     icon: Sparkles,
     features: [
-      "30 天有效，包含 1000 次 AI 次数",
+      "30 天有效，包含 1000 次 IELTS AI 次数",
       "支持题库模考与全真模考正式报告",
       "适合高强度连续练习",
-      "同样支持继续购买加量包",
+      "同样支持继续购买 IELTS 加量包",
     ],
   },
   {
-    title: "加量包",
-    subtitle: "仅对 Pro / Ultra 用户开放",
-    originalPrice: "原价 ¥279",
-    salePrice: "限时 ¥79",
+    title: "IELTS 加量包",
+    subtitle: "仅对 IELTS PRO / IELTS ULTRA 用户开放",
+    originalPrice: "原价 ￥279",
+    salePrice: "限时 ￥79",
     detail: "30 天 / 200 次",
     buttonLabel: "联系客服开通",
     accent: "bg-white",
     icon: Zap,
     features: [
-      "仅限已开通 Pro / Ultra 的用户购买",
+      "仅限已开通 IELTS PRO / IELTS ULTRA 的用户购买",
       "每个加量包独立 30 天有效",
       "多个加量包按购买顺序依次扣减",
-      "先扣会员主额度，再扣加量包额度",
+      "先扣会员主额度，再扣 IELTS 加量包额度",
     ],
   },
 ];
@@ -89,7 +89,7 @@ export default function PricingPage() {
             选择适合你的 AI 口语套餐
           </h1>
           <p className="mx-auto mt-4 max-w-3xl text-base leading-8 text-[#5b5349]">
-            Free 用户可先体验 5 次题库模考分析。正式备考可开通 Pro 或 Ultra；次数不够时，再购买独立加量包。
+            口语素养会员适合长期日常口语训练；IELTS 系列套餐适合备考训练与模考分析。你可以先免费体验，再按自己的目标选择合适方案。
           </p>
         </div>
 
@@ -110,18 +110,16 @@ export default function PricingPage() {
                     <h2 className="text-3xl font-semibold tracking-[-0.04em] text-[#101828]">{plan.title}</h2>
                     <p className="mt-2 text-base text-[#5b5349]">{plan.subtitle}</p>
                   </div>
-                  <div className="grid gap-2">
+                  <div className="grid gap-1.5">
                     {plan.originalPrice ? (
-                      <p className="text-sm text-[#98a2b3] line-through">{plan.originalPrice}</p>
+                      <p className="text-lg text-[#98a2b3] line-through">{plan.originalPrice}</p>
                     ) : (
                       <p className="text-sm text-[#98a2b3]">永久免费体验</p>
                     )}
-                    <div className="flex items-end justify-between gap-4">
-                      <span className="text-4xl font-semibold tracking-[-0.05em] text-[#101828]">{plan.salePrice}</span>
-                      <span className="pb-1 text-base text-[#6f675c]">{plan.detail}</span>
-                    </div>
+                    <p className="text-[2.75rem] font-semibold tracking-[-0.05em] text-[#101828]">{plan.salePrice}</p>
+                    <p className="text-base leading-8 text-[#6f675c]">{plan.detail}</p>
                   </div>
-                  <a href="#contact" className="brand-button mt-1 min-h-14 w-full justify-center">
+                  <a href="#contact" className="brand-button min-h-14 w-full justify-center">
                     {plan.buttonLabel}
                   </a>
                 </div>
@@ -145,13 +143,14 @@ export default function PricingPage() {
           <div className="grid gap-4">
             <h2 className="text-3xl font-semibold tracking-[-0.04em] text-[#101828]">联系客服开通</h2>
             <p className="text-base leading-8 text-[#5b5349]">
-              扫码添加雅小满客服微信，备注你要购买的套餐：Pro、Ultra 或加量包。付款完成后，会在后台手动为你的账号开通对应次数。
+              扫码添加雅小满客服微信，备注你要购买的套餐名称。付款完成后，会在后台手动为你的账号开通对应权限或次数。
             </p>
             <div className="grid gap-3 rounded-[24px] bg-[#f7f9fc] p-5 text-sm leading-7 text-[#344054]">
-              <p>Pro：原价 ¥299，限时 ¥99 / 30 天 / 300 次</p>
-              <p>Ultra：原价 ¥899，限时 ¥199 / 30 天 / 1000 次</p>
-              <p>加量包：原价 ¥279，限时 ¥79 / 30 天 / 200 次，仅限 Pro / Ultra 用户购买</p>
-              <p>扣减顺序：先扣会员主额度，再按购买顺序扣独立加量包。</p>
+              <p>口语素养会员：原价 ￥39.9，限时 ￥9.9 / 1 个月 / 口语素养不限次数</p>
+              <p>IELTS PRO：原价 ￥299，限时 ￥99 / 30 天 / 300 次</p>
+              <p>IELTS ULTRA：原价 ￥899，限时 ￥199 / 30 天 / 1000 次</p>
+              <p>IELTS 加量包：原价 ￥279，限时 ￥79 / 30 天 / 200 次，仅限 IELTS PRO / IELTS ULTRA 用户购买</p>
+              <p>扣减顺序：先扣 IELTS 会员主额度，再按购买顺序扣独立 IELTS 加量包。</p>
             </div>
           </div>
 

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { JetBrains_Mono, Space_Grotesk } from "next/font/google";
 
 import { AuthProvider } from "@/components/auth-provider";
+import { PageTransition } from "@/components/page-transition";
 import { SiteHeader } from "@/components/site-header";
 
 import "./globals.css";
@@ -32,7 +33,7 @@ export default function RootLayout({
         <AuthProvider>
           <div className="min-h-screen">
             <SiteHeader />
-            {children}
+            <PageTransition>{children}</PageTransition>
           </div>
         </AuthProvider>
       </body>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { KeyRound, LogOut, Mail, ShieldCheck } from "lucide-react";
 
 import { useAuth } from "@/components/auth-provider";
@@ -13,7 +14,9 @@ type AuthCardProps = {
 };
 
 export function AuthCard({ initialMode = "login", onSuccess }: AuthCardProps) {
-  const { configured, loading, refreshUsage, supabase, user, usage } = useAuth();
+  const router = useRouter();
+  const { configured, loading, refreshUsage, supabase, user, usage, completeProfileSetupLocally, clearAuthStateLocally } =
+    useAuth();
 
   const [mode, setMode] = useState<AuthMode>(initialMode);
   const [registerEmail, setRegisterEmail] = useState("");
@@ -132,17 +135,20 @@ export function AuthCard({ initialMode = "login", onSuccess }: AuthCardProps) {
       })
       .eq("id", user.id);
 
-    setSubmitting(false);
-
     if (profileError) {
+      setSubmitting(false);
       setStatus(profileError.message);
       return;
     }
 
-    await refreshUsage();
+    completeProfileSetupLocally();
     setPassword("");
     setConfirmPassword("");
-    setStatus("注册完成，后续可以直接使用邮箱和密码登录。");
+    setStatus("注册完成。");
+    setSubmitting(false);
+    onSuccess?.();
+    router.refresh();
+    void refreshUsage();
   };
 
   const handleSignOut = async () => {
@@ -150,10 +156,28 @@ export function AuthCard({ initialMode = "login", onSuccess }: AuthCardProps) {
       return;
     }
 
-    await supabase.auth.signOut();
+    setSubmitting(true);
+    setStatus(null);
+
+    const { error } = await supabase.auth.signOut({ scope: "local" });
+
+    if (error) {
+      setSubmitting(false);
+      setStatus(error.message);
+      return;
+    }
+
+    clearAuthStateLocally();
     setRegisterOtp("");
     setOtpSent(false);
+    setLoginEmail("");
+    setLoginPassword("");
+    setPassword("");
+    setConfirmPassword("");
     setStatus(null);
+    setSubmitting(false);
+    onSuccess?.();
+    router.refresh();
   };
 
   if (!configured) {
@@ -216,9 +240,9 @@ export function AuthCard({ initialMode = "login", onSuccess }: AuthCardProps) {
 
         {status ? <p className="text-sm text-[#344054]">{status}</p> : null}
 
-        <button type="button" className="small-button w-full" onClick={handleSignOut}>
+        <button type="button" className="small-button w-full" onClick={handleSignOut} disabled={submitting}>
           <LogOut className="h-4 w-4" />
-          退出登录
+          {submitting ? "退出中..." : "退出登录"}
         </button>
       </section>
     );
@@ -262,9 +286,6 @@ export function AuthCard({ initialMode = "login", onSuccess }: AuthCardProps) {
           <div className="grid gap-4">
             <div>
               <p className="text-lg font-semibold text-[#101828]">邮箱验证码注册</p>
-              <p className="mt-2 text-sm leading-7 text-[#475467]">
-                先通过邮箱验证码完成验证，再设置密码。验证码邮件里是 8 位验证码，不是登录链接。
-              </p>
             </div>
 
             <input

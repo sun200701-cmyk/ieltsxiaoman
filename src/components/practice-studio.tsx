@@ -15,6 +15,14 @@ import type { AssessmentResult, DemoQuestion, MockGenerationPhase, PracticeAsses
 
 type PracticeStudioProps = {
   question: DemoQuestion;
+  assessmentApiPath?: string;
+  usageScope?: "ielts" | "regular-english";
+  nextQuestionHref?: string;
+  nextButtonLabel?: string;
+  exhaustedTitle?: string;
+  exhaustedDescription?: string;
+  exhaustedActionHref?: string;
+  exhaustedActionLabel?: string;
 };
 
 type RecorderState = "idle" | "recording" | "ready" | "submitting";
@@ -273,8 +281,18 @@ function getAssessmentProgress(stage: AssessmentStage) {
   return 0;
 }
 
-export function PracticeStudio({ question }: PracticeStudioProps) {
-  const { accessToken, refreshUsage, usage, user } = useAuth();
+export function PracticeStudio({
+  question,
+  assessmentApiPath = "/api/assessment",
+  usageScope = "ielts",
+  nextQuestionHref,
+  nextButtonLabel,
+  exhaustedTitle = "当前次数已用完",
+  exhaustedDescription = "你可以前往 AI 口语定价页面查看 Free、Pro、Ultra 和加量包方案，再扫码联系客服开通。",
+  exhaustedActionHref = "/me/pricing",
+  exhaustedActionLabel = "查看 AI 口语定价",
+}: PracticeStudioProps) {
+  const { accessToken, refreshRegularEnglishUsage, refreshUsage, regularEnglishUsage, usage, user } = useAuth();
   const router = useRouter();
   const recorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -294,6 +312,8 @@ export function PracticeStudio({ question }: PracticeStudioProps) {
   const [assessmentPhases, setAssessmentPhases] = useState<PracticeAssessmentApiResponse["phases"] | null>(null);
   const [assessmentWarnings, setAssessmentWarnings] = useState<string[]>([]);
   const assessmentStageTimerRef = useRef<number | null>(null);
+  const activeRegularEnglishUsage = usageScope === "regular-english" ? regularEnglishUsage : null;
+  const activeUsage = usageScope === "regular-english" ? regularEnglishUsage : usage;
 
   const nextTheme = useMemo(() => {
     const index = orderedQuestions.findIndex((item) => item.id === question.id);
@@ -347,6 +367,7 @@ export function PracticeStudio({ question }: PracticeStudioProps) {
       requiredPart1AnswersByQuestionText[currentQuestionText] ||
         referenceAnswersByQuestionText[currentQuestionText] ||
         normalizedReferenceAnswers[normalizeQuestionText(currentQuestionText)] ||
+        question.sampleAnswer ||
         "",
     );
   }, [currentQuestionText, normalizedReferenceAnswers, question]);
@@ -596,7 +617,7 @@ export function PracticeStudio({ question }: PracticeStudioProps) {
     formData.append("durationSeconds", String(durationSeconds));
     formData.append("activeQuestionIndex", String(activeQuestionIndex));
 
-    const response = await fetch("/api/assessment", {
+    const response = await fetch(assessmentApiPath, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -647,7 +668,12 @@ export function PracticeStudio({ question }: PracticeStudioProps) {
       }
       setRecorderState("ready");
       setShowUpgradePrompt(true);
-      setStatus(payload?.error || "当前可用次数已用完，请前往 AI 口语定价页面联系客服开通。");
+      setStatus(
+        payload?.error ||
+          (usageScope === "regular-english"
+            ? "本月口语素养免费次数已用完。"
+            : "当前可用次数已用完，请前往 AI 口语定价页面联系客服开通。"),
+      );
       return;
     }
 
@@ -697,6 +723,11 @@ export function PracticeStudio({ question }: PracticeStudioProps) {
         ? "分析已完成，但本次已自动切换为兜底结果。"
         : "分析完成，可以查看你的冲刺建议和表达升级。",
     );
+    if (usageScope === "regular-english") {
+      await refreshRegularEnglishUsage();
+      return;
+    }
+
     await refreshUsage();
   };
   const handleReanswer = () => {
@@ -728,16 +759,20 @@ export function PracticeStudio({ question }: PracticeStudioProps) {
       return;
     }
 
-    router.push(`/practice/${nextTheme.slug}`);
+    router.push(nextQuestionHref ?? `/practice/${nextTheme.slug}`);
   };
 
   const usageLine = !user
     ? "未登录状态下可以录音，但点击分析时会先引导你登录。"
-    : usage?.hasActiveMembership
-      ? `当前会员主额度剩余 ${usage.membershipQuotaRemaining} 次，加量包剩余 ${usage.activeAddonCreditsRemaining} 次。`
-      : `当前免费次数剩余 ${usage?.freeTrialsRemaining ?? 0} 次。`;
+    : usageScope === "regular-english"
+      ? activeRegularEnglishUsage?.hasUnlimitedAccess
+        ? "当前已开通口语素养会员，可不限次数使用。"
+        : `本月口语素养免费次数剩余 ${activeRegularEnglishUsage?.freeTrialsRemaining ?? 0} 次。`
+      : usage?.hasActiveMembership
+        ? `当前会员主额度剩余 ${usage.membershipQuotaRemaining} 次，加量包剩余 ${usage.activeAddonCreditsRemaining} 次。`
+        : `当前免费次数剩余 ${usage?.freeTrialsRemaining ?? 0} 次。`;
 
-  const nextButtonLabel = hasNextQuestionInSet ? "Next Question" : "Next Topic";
+  const resolvedNextButtonLabel = hasNextQuestionInSet ? "Next Question" : nextButtonLabel ?? "Next Topic";
   const analysisLegend = [
     { label: "亮点表达", className: "bg-[#e8f8ee] text-[#18794e]" },
     { label: "搭配较好", className: "bg-[#fff4e8] text-[#b54708]" },
@@ -878,7 +913,7 @@ export function PracticeStudio({ question }: PracticeStudioProps) {
                 onClick={handleNextQuestion}
                 className="inline-flex min-h-14 items-center justify-center rounded-full bg-[#101828] px-6 text-base font-medium text-white transition hover:bg-[#1b2333] sm:px-8"
               >
-                {nextButtonLabel}
+                {resolvedNextButtonLabel}
               </button>
             </div>
 
@@ -1160,9 +1195,9 @@ export function PracticeStudio({ question }: PracticeStudioProps) {
       {showUpgradePrompt ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#101828]/35 px-4">
           <div className="w-full max-w-lg rounded-[24px] bg-white p-5 shadow-[0_24px_80px_rgba(16,24,40,0.18)] sm:rounded-[28px] sm:p-7">
-            <h3 className="text-2xl font-semibold text-[#101828]">当前次数已用完</h3>
+            <h3 className="text-2xl font-semibold text-[#101828]">{exhaustedTitle}</h3>
             <p className="mt-3 text-sm leading-7 text-[#475467]">
-              你可以前往 AI 口语定价页面查看 Free、Pro、Ultra 和加量包方案，再扫码联系客服开通。
+              {exhaustedDescription}
             </p>
             <div className="mt-6 grid gap-3 sm:flex">
               <button
@@ -1173,10 +1208,10 @@ export function PracticeStudio({ question }: PracticeStudioProps) {
                 关闭
               </button>
               <Link
-                href="/me/pricing"
+                href={exhaustedActionHref}
                 className="inline-flex flex-1 items-center justify-center rounded-full bg-[#101828] px-4 py-3 text-sm font-medium text-white transition hover:bg-[#1b2333]"
               >
-                查看 AI 口语定价
+                {exhaustedActionLabel}
               </Link>
             </div>
           </div>
